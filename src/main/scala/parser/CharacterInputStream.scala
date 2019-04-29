@@ -2,6 +2,10 @@ package parser
 
 import java.io.InputStream
 
+case class CursorPos(line: Int, column: Int){
+  override def toString(): String = s"Line: ${line}, Column: ${column}"
+}
+
 class CharacterStream(is: InputStream){
 
   private var lineNum: Int = 1
@@ -16,6 +20,12 @@ class CharacterStream(is: InputStream){
       columnNum += 1
     }
     char
+  }
+
+  def next(n: Int): String = {
+    val bytes: Array[Byte] = new Array[Byte](n)
+    is.read(bytes)
+    new String(bytes)
   }
 
   def peek(): Char = {
@@ -37,4 +47,5 @@ class CharacterStream(is: InputStream){
 
   def line(): Int = lineNum
   def column(): Int = columnNum
+  def cursorPos(): CursorPos = CursorPos(line(), column())
 }
