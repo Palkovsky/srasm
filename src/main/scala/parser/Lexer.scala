@@ -18,10 +18,12 @@ sealed trait Token {
     this
   }
 }
-
 case class StringToken(string: String) extends Token
 case class SpecialToken(value: String) extends Token
 case class EOF() extends Token
+
+final case class LexerException(private val message: String = "") extends Exception(message)
+
 
 class Lexer private(charStream: CharacterStream){
 
@@ -33,6 +35,8 @@ class Lexer private(charStream: CharacterStream){
         tokens = token :: tokens
       }
     }
+
+    tokens = nextToken() :: tokens
     tokens.reverse
   }
 
@@ -90,5 +94,3 @@ object Lexer{
     SPECIAL_CHARACTERS.contains(charStream.peek(1))
   }
 }
-
-final case class LexerException(private val message: String = "") extends Exception(message)
