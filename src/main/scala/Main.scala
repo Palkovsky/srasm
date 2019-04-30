@@ -13,5 +13,5 @@ object Main extends App {
   val lexer: Lexer = Lexer(new CharacterStream(is))
 
   println("TOKENIZED:")
-  for(token <- lexer.tokenize()) println(token)
+  for(token <- lexer.tokenize().tokens) println(token)
 }

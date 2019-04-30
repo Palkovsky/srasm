@@ -20,30 +20,57 @@ sealed trait Token {
 }
 case class StringToken(string: String) extends Token
 case class SpecialToken(value: String) extends Token
-case class EOF() extends Token
+case class BlockToken(tokens: List[Token]) extends Token
+case class EOFToken() extends Token
 
 final case class LexerException(private val message: String = "") extends Exception(message)
 
-
 class Lexer private(charStream: CharacterStream){
 
-  def tokenize(): Seq[Token] = {
+  def tokenize(): BlockToken = tokenize(CursorPos(1, 1), 0)
+
+  private def tokenize(blockPos: CursorPos, blockDepth: Int): BlockToken = {
     var tokens: List[Token] = List()
-    while(available()) {
+
+    while(true) {
       val token: Token = nextToken()
-      if(token != SpecialToken(" ") && token != SpecialToken("\n")){
-        tokens = token :: tokens
+
+      token match {
+        // Ignored tokens
+        case SpecialToken(Lang.SPACE) => ()
+        case SpecialToken(Lang.NEWLINE) => ()
+        case SpecialToken(Lang.CRLF) => ()
+
+        // Block opening
+        case SpecialToken(Lang.BLOCK_PARENS_OPEN) => {
+          val block = tokenize(token.start(), blockDepth + 1)
+          tokens = block :: tokens
+        }
+
+        // Block closing/EOF
+        case SpecialToken(Lang.BLOCK_PARENS_CLOSE) => {
+          if(blockDepth <= 0)
+            throw new LexerException(s"Unexpected '${Lang.BLOCK_PARENS_CLOSE}' at ${token.start()}")
+          return BlockToken(tokens.reverse)
+        }
+        case EOFToken() => {
+          if(blockDepth > 0)
+            throw new LexerException(s"Unexpected EOF. Block not properly enclosed. At ${blockPos}")
+          return BlockToken(tokens.reverse)
+        }
+
+        case token => tokens = token :: tokens
       }
     }
 
-    tokens = nextToken() :: tokens
-    tokens.reverse
+    throw new LexerException(s"Unexpected EOF. Block not properly enclosed. At ${blockPos}")
   }
 
-  def nextToken(): Token = {
-    if(!charStream.available()) return EOF()
+  private def nextToken(): Token = {
+    if(!charStream.available()) return EOFToken()
 
     val startPos: CursorPos = charStream.cursorPos()
+
     val token: Token = {
       if(Lexer.isSpecial(charStream)) parseSpecial()
       else if(Lexer.isString(charStream)) parseString()
@@ -51,12 +78,11 @@ class Lexer private(charStream: CharacterStream){
         throw new LexerException(s"Unrecognizable character '${charStream.peek(10)}...' at ${charStream.cursorPos}")
       }
     }
+
     val endPos: CursorPos = charStream.cursorPos()
 
     token.start(startPos).end(endPos)
   }
-
-  def available(): Boolean = charStream.available()
 
   private def parseString(): StringToken = {
     var string: String = ""
@@ -77,9 +103,11 @@ class Lexer private(charStream: CharacterStream){
 object Lexer{
 
   private val SPECIAL_CHARACTERS = Array(
-    "<=",
-    ",", "{", "}", "[", "]",
-    " ", "\n", "\r\n"
+    Lang.ADDR_ASSIGMENT,
+    Lang.DEREF_PARENS_OPEN, Lang.DEREF_PARENS_CLOSE,
+    Lang.BLOCK_PARENS_OPEN, Lang.BLOCK_PARENS_CLOSE,
+    Lang.ARG_SEPARATOR,
+    Lang.SPACE, Lang.NEWLINE, Lang.CRLF
   )
 
   def apply(charStream: CharacterStream) = new Lexer(charStream)

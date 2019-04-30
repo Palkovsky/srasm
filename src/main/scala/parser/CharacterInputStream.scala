@@ -13,7 +13,7 @@ class CharacterStream(is: InputStream){
 
   def next(): Char = {
     val char: Char = is.read().toChar
-    if(char == '\n' || (char == '\r' && peek() == '\n')){
+    if(peek(1) == Lang.NEWLINE || peek(2) == Lang.CRLF){
       columnNum = 1
       lineNum += 1
     } else {
@@ -23,9 +23,8 @@ class CharacterStream(is: InputStream){
   }
 
   def next(n: Int): String = {
-    val bytes: Array[Byte] = new Array[Byte](n)
-    is.read(bytes)
-    new String(bytes)
+    val chars: Array[Char] = for(_ <- Array(0 until n)) yield next()
+    new String(chars)
   }
 
   def peek(): Char = {

@@ -9,4 +9,14 @@ CODE <= {
   LDX [FFh], X
   TXS 2
   BRK
+
+  JSR SUBRT_2
+
+  SUBRT_1 <= {
+    JSR SUBRT_2
+  }
+
+  SUBRT_2 <= {
+    JSR SUBRT_1
+  }
 }
