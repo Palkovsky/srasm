@@ -1,22 +1,19 @@
-ORG 1000h
+ORG $#1000
 
-DATA <= {
-  ports <= 0x00, 0x00, 0x00
-  arr <= 0x00, 0x01, 0x02, 0x03
-}
+DATA:
+arr1: 
+arr2:   
 
-CODE <= {
-  LDX [0xFF], X
-  TXS 2
-  BRK
+CODE:   
+    LDX $#FF, X
+    TXS
+    BRK
 
-  JSR SUBRT_2
-
-  SUBRT_1 <= {
     JSR SUBRT_2
-  }
 
-  SUBRT_2 <= {
+SUBRT_1:    
+    JSR SUBRT_2
+
+SUBRT_2:    
     JSR SUBRT_1
-  }
-}
+

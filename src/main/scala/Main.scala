@@ -1,5 +1,4 @@
-import java.io.{ FileReader, LineNumberReader, Reader }
-import parser.{CharacterStream, Lexer, Token, Parser}
+import java.nio.file.{ Files, Paths }
 
 object Main extends App {
 
@@ -9,14 +8,9 @@ object Main extends App {
   }
 
   val path: String = args(0)
-  val lexer: Lexer = Lexer(new CharacterStream(path))
-  val parser: Parser = new Parser()
-  val tokens: List[Token] = lexer.tokenize().tokens
+  val encoded: Array[Byte] = Files.readAllBytes(Paths.get(path));
+  val str: String = new String(encoded);
 
-  println("TOKENIZED:")
-  println(tokens)
-
-  println("======")
-  println("PARSED:")
-  println(parser.parse(tokens))
+  val ast: RootNode = ASMParser.runParser(str).get
+  ast.nodes.foreach(println)
 }
