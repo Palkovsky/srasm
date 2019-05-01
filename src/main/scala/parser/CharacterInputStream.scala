@@ -12,19 +12,27 @@ class CharacterStream(is: InputStream){
   private var columnNum: Int = 1
 
   def next(): Char = {
-    val char: Char = is.read().toChar
-    if(peek(1) == Lang.NEWLINE || peek(2) == Lang.CRLF){
+    if(peek() == '\r'){
+      is.read()
+      if(peek() == '\n') is.read()
+      columnNum = 1
+      lineNum += 1
+    }else if(peek() == '\n'){
+      is.read()
       columnNum = 1
       lineNum += 1
     } else {
       columnNum += 1
     }
-    char
+
+    if(is.available() <= 0) return 0x00.toChar
+    is.read().toChar
   }
 
   def next(n: Int): String = {
-    val chars: Array[Char] = for(_ <- Array(0 until n)) yield next()
-    new String(chars)
+    var chars: Seq[Char] = for(_ <- 0 until n; if is.available() > 0) yield next()
+    //chars = chars.filter((chr) => chr != 0x00)
+    new String(chars.toArray)
   }
 
   def peek(): Char = {
@@ -35,11 +43,23 @@ class CharacterStream(is: InputStream){
   }
 
   def peek(n: Int): String = {
-    is.mark(n)
-    val bytes: Array[Byte] = new Array[Byte](n)
-    is.read(bytes)
+    is.mark(10*n)
+
+    /*
+    var i: Int = 0
+    var str: String = ""
+    while(available() && i < n){
+      val chr: Char = is.read().toChar
+      if(chr != '\n' && chr != '\r'){
+        str = str + chr
+        i = i + 1
+      }
+     }*/
+    val str = next(n)
+    
+
     is.reset()
-    new String(bytes)
+    str
   }
 
   def available(): Boolean = is.available() > 0

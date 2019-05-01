@@ -1,5 +1,5 @@
 import java.io.{ BufferedInputStream, FileInputStream, InputStream }
-import parser.{CharacterStream, Lexer}
+import parser.{CharacterStream, Lexer, Token, EOFToken}
 
 object Main extends App {
 
@@ -12,6 +12,15 @@ object Main extends App {
   val is: InputStream = new BufferedInputStream(new FileInputStream(path))
   val lexer: Lexer = Lexer(new CharacterStream(is))
 
-  println("TOKENIZED:")
-  for(token <- lexer.tokenize().tokens) println(token)
+  
+  var t: Token = lexer.nextToken()
+  while(t != EOFToken()) {
+    println(t)
+    t = lexer.nextToken()
+  }
+
+
+  //println("TOKENIZED:")
+  //println(lexer.tokenize().tokens(0))
+
 }

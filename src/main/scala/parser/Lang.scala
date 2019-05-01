@@ -2,9 +2,10 @@ package parser
 
 object Lang {
 
-  val SPACE = " "
-  val NEWLINE = "\n"
-  val CRLF = "\r\n"
+  val SPACE = new String(Array[Byte](0x20))
+  val NEWLINE = new String(Array[Byte](0x0A))
+  val CRLF = new String(Array[Byte](0x0D, 0x0A))
+  val CR =  new String(Array[Byte](0x0D))
 
   val ADDR_ASSIGMENT = "<="
 
@@ -27,6 +28,10 @@ object Lang {
     "ORG"
   )
 
+  val REGISTERS: Array[String] = Array(
+    "X", "Y", "A"
+  )
+
   val INSTRUCTIONS: Array[String] = Array(
     "BRK", "JMP",
     "LDA", "LDX", "LDY",
@@ -38,4 +43,7 @@ object Lang {
 
   def isDirective(str: String): Boolean =
     DIRECTIVES.contains(str.toUpperCase())
+
+  def isRegister(str: String): Boolean =
+    REGISTERS.contains(str.toUpperCase())
 }

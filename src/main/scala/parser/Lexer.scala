@@ -21,6 +21,7 @@ sealed trait Token {
 case class StringToken(string: String) extends Token
 case class SpecialToken(value: String) extends Token
 case class BlockToken(tokens: List[Token]) extends Token
+case class DerefToken(value: String) extends Token
 case class EOFToken() extends Token
 
 final case class LexerException(private val message: String = "") extends Exception(message)
@@ -40,6 +41,23 @@ class Lexer private(charStream: CharacterStream){
         case SpecialToken(Lang.SPACE) => ()
         case SpecialToken(Lang.NEWLINE) => ()
         case SpecialToken(Lang.CRLF) => ()
+        case SpecialToken(Lang.CR) => ()
+
+        // Dereference opening
+        case SpecialToken(Lang.DEREF_PARENS_OPEN) => {
+          val value: Token = nextToken()
+          val closing: Token = nextToken()
+
+          if(!value.isInstanceOf[StringToken]){
+            throw new LexerException(s"Expecting address at ${value.start()}")
+          }
+
+          if(!closing.isInstanceOf[SpecialToken] || closing.asInstanceOf[SpecialToken].value != Lang.DEREF_PARENS_CLOSE){
+            throw new LexerException(s"Expecting '${Lang.DEREF_PARENS_CLOSE}' at ${closing.start()}")
+          }
+ 
+          tokens = DerefToken(value.asInstanceOf[StringToken].string) :: tokens
+        }
 
         // Block opening
         case SpecialToken(Lang.BLOCK_PARENS_OPEN) => {
@@ -66,8 +84,9 @@ class Lexer private(charStream: CharacterStream){
     throw new LexerException(s"Unexpected EOF. Block not properly enclosed. At ${blockPos}")
   }
 
-  private def nextToken(): Token = {
-    if(!charStream.available()) return EOFToken()
+   def nextToken(): Token = {
+     if(!charStream.available()) 
+       return EOFToken()
 
     val startPos: CursorPos = charStream.cursorPos()
 
@@ -80,7 +99,6 @@ class Lexer private(charStream: CharacterStream){
     }
 
     val endPos: CursorPos = charStream.cursorPos()
-
     token.start(startPos).end(endPos)
   }
 
@@ -93,21 +111,29 @@ class Lexer private(charStream: CharacterStream){
   }
 
   private def parseSpecial(): SpecialToken = {
-    if(Lexer.SPECIAL_CHARACTERS.contains(charStream.peek(2)))
-      SpecialToken(charStream.next(2))
-    else
+    if(Lexer.SPECIAL_CHARACTERS.contains(charStream.peek(2))){
+      //println(charStream.peek(2))
+      val t = SpecialToken(charStream.peek(2))
+      val r = SpecialToken(charStream.next(2))
+      //println(s"P: ${t} | R: ${r}")
+      r
+    }
+    else {
+      println(charStream.peek(1))
       SpecialToken(charStream.next(1))
+    }
   }
 }
 
 object Lexer{
 
-  private val SPECIAL_CHARACTERS = Array(
+  private val SPECIAL_CHARACTERS: Array[String] = Array(
     Lang.ADDR_ASSIGMENT,
     Lang.DEREF_PARENS_OPEN, Lang.DEREF_PARENS_CLOSE,
     Lang.BLOCK_PARENS_OPEN, Lang.BLOCK_PARENS_CLOSE,
+    Lang.DIRECTIVE_PARENS_OPEN, Lang.DIRECTIVE_PARENS_CLOSE,
     Lang.ARG_SEPARATOR,
-    Lang.SPACE, Lang.NEWLINE, Lang.CRLF
+    Lang.SPACE, Lang.NEWLINE, Lang.CRLF, Lang.CR
   )
 
   def apply(charStream: CharacterStream) = new Lexer(charStream)
