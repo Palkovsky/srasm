@@ -5,7 +5,8 @@ object Lang {
   )
 
   val DIRECTIVES: Array[String] = Array(
-    "ORG"
+    "ORG",
+    "DB"
   )
 
   val REGISTERS: Array[String] = Array(
