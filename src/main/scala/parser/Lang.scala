@@ -14,8 +14,10 @@ object Lang {
   val BLOCK_PARENS_OPEN = "{"
   val BLOCK_PARENS_CLOSE = "}"
 
-  val ARG_SEPARATOR = ","
+  val DIRECTIVE_PARENS_OPEN = "("
+  val DIRECTIVE_PARENS_CLOSE = ")"
 
+  val ARG_SEPARATOR = ","
 
   val KEYWORDS: Array[String] = Array(
     "DATA", "CODE"
