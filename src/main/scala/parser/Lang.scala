@@ -33,7 +33,7 @@ object Lang {
   )
 
   val INSTRUCTIONS: Array[String] = Array(
-    "BRK", "JMP",
+    "BRK", "JMP", "ORG",
     "LDA", "LDX", "LDY",
     "TXS"
   )

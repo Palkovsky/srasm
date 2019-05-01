@@ -1,70 +1,42 @@
 package parser
 
-import java.io.InputStream
+import java.io.{ LineNumberReader, FileReader }
 
-case class CursorPos(line: Int, column: Int){
-  override def toString(): String = s"Line: ${line}, Column: ${column}"
+case class CursorPos(line: Int, column: Int = 1){
+  override def toString(): String = s"Line: ${line}"
 }
 
-class CharacterStream(is: InputStream){
+class CharacterStream(path: String){
 
-  private var lineNum: Int = 1
-  private var columnNum: Int = 1
+  val file: LineNumberReader = new LineNumberReader(new FileReader(path))
 
   def next(): Char = {
-    if(peek() == '\r'){
-      is.read()
-      if(peek() == '\n') is.read()
-      columnNum = 1
-      lineNum += 1
-    }else if(peek() == '\n'){
-      is.read()
-      columnNum = 1
-      lineNum += 1
-    } else {
-      columnNum += 1
-    }
-
-    if(is.available() <= 0) return 0x00.toChar
-    is.read().toChar
+    file.read().toChar
   }
 
   def next(n: Int): String = {
-    var chars: Seq[Char] = for(_ <- 0 until n; if is.available() > 0) yield next()
-    //chars = chars.filter((chr) => chr != 0x00)
-    new String(chars.toArray)
+    val chars: Array[Char] = new Array[Char](n)
+    file.read(chars)
+    new String(chars)
   }
 
   def peek(): Char = {
-    is.mark(1)
-    val char: Char = is.read().toChar
-    is.reset()
+    file.mark(1)
+    val char: Char = file.read().toChar
+    file.reset()
     char
   }
 
   def peek(n: Int): String = {
-    is.mark(10*n)
-
-    /*
-    var i: Int = 0
-    var str: String = ""
-    while(available() && i < n){
-      val chr: Char = is.read().toChar
-      if(chr != '\n' && chr != '\r'){
-        str = str + chr
-        i = i + 1
-      }
-     }*/
+    file.mark(3*n)
     val str = next(n)
-    
-
-    is.reset()
+    file.reset()
     str
   }
 
-  def available(): Boolean = is.available() > 0
+  def available(): Boolean = file.ready()
 
-  def line(): Int = lineNum
-  def column(): Int = columnNum
+  def line(): Int = file.getLineNumber()
+  def column(): Int = 1
   def cursorPos(): CursorPos = CursorPos(line(), column())
 }

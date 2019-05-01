@@ -17,6 +17,8 @@ case class Dereference(addr: NumberLiteral) extends ASTNode
 case class BlockAssigment(label: String, dest: Block) extends ASTNode
 case class LiteralAssigment(label: String, dest: Literal) extends ASTNode
 
+case class Unknown() extends ASTNode
+
 class Parser() {
 
   def parse(tokens: List[Token]): List[ASTNode] = parse(tokens, List())
@@ -25,8 +27,9 @@ class Parser() {
 
     // Stop conditions
     tokens match {
-      case List() => return List()
-      case List(EOFToken()) => return List()
+      case List() => return acc.reverse
+      case List(EOFToken()) => return acc.reverse
+      case _ => ()
     }
 
     // Actual parsing
@@ -79,7 +82,9 @@ class Parser() {
       // Zero-arg instruction
       case StringToken(inst) :: tail if Lang.isInstruction(inst) => {
         (Instruction(inst), tail)
-      }*/
+ }*/
+
+      case _ :: tail => (Unknown(), tail)
     }
 
     val node = pair._1

@@ -112,14 +112,8 @@ class Lexer private(charStream: CharacterStream){
 
   private def parseSpecial(): SpecialToken = {
     if(Lexer.SPECIAL_CHARACTERS.contains(charStream.peek(2))){
-      //println(charStream.peek(2))
-      val t = SpecialToken(charStream.peek(2))
-      val r = SpecialToken(charStream.next(2))
-      //println(s"P: ${t} | R: ${r}")
-      r
-    }
-    else {
-      println(charStream.peek(1))
+      SpecialToken(charStream.next(2))
+    } else {
       SpecialToken(charStream.next(1))
     }
   }

@@ -1,12 +1,12 @@
 ORG 1000h
 
 DATA <= {
-  ports <= 00h, 00h, 00h
-  arr <= 00h, 01h, 02h, 03h
+  ports <= 0x00, 0x00, 0x00
+  arr <= 0x00, 0x01, 0x02, 0x03
 }
 
 CODE <= {
-  LDX [FFh], X
+  LDX [0xFF], X
   TXS 2
   BRK
 
