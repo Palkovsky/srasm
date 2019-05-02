@@ -3,10 +3,28 @@ package compiler
 import scala.collection.mutable
 import spire.math.UByte
 
-
 object AddressingMode extends Enumeration {
   type AddressingMode = Value
   val IMPL, ACC, IMM, ZP, ZP_X, ZP_Y, REL, ABS, ABS_X, ABS_Y, INDIRECT, INDIRECT_X, INDIRECT_Y = Value
+
+  /*
+   *  Gives required arugment size of each addresing mode(in bytes).
+   */
+  def getSize(mode: AddressingMode): Int = mode match {
+    case IMPL => 0
+    case ACC => 0
+    case IMM => 1
+    case ZP => 1
+    case ZP_X => 1
+    case ZP_Y => 1
+    case REL => 1
+    case ABS => 2
+    case ABS_X => 2
+    case ABS_Y => 2
+    case INDIRECT => 2
+    case INDIRECT_X => 1
+    case INDIRECT_Y => 1
+  }
 }
 
 import compiler.AddressingMode._
@@ -28,8 +46,11 @@ object InstructionFamily{
 }
 
 object InstructionSet {
-  val instructions: Array[InstructionFamily] = Array(
 
+  def fetch(name: String, mode: AddressingMode): Option[Instruction] =
+    lookup.get(name).flatMap((family) => family.get(mode))
+
+  val instructions: Array[InstructionFamily] = Array(
     // Arithmetic
     InstructionFamily("ADC")
       .add(0x69, IMM)
@@ -60,7 +81,6 @@ object InstructionSet {
       .add(0x39, ABS_Y)
       .add(0x21, INDIRECT_X)
       .add(0x31, INDIRECT_Y),
-
     InstructionFamily("EOR")
       .add(0x49, IMM)
       .add(0x45, ZP)
@@ -80,7 +100,6 @@ object InstructionSet {
       .add(0x19, ABS_Y)
       .add(0x01, INDIRECT_X)
       .add(0x11, INDIRECT_Y),
-
     InstructionFamily("BIT")
       .add(0x24, ZP)
       .add(0x2C, ABS),
@@ -107,7 +126,6 @@ object InstructionSet {
       .add(0x36, ZP_X)
       .add(0x2E, ABS)
       .add(0x3E, ABS_X),
-
     InstructionFamily("ROR")
       .add(0x6A, ACC)
       .add(0x66, ZP)
@@ -210,14 +228,12 @@ object InstructionSet {
       .add(0xB9, ABS_Y)
       .add(0xA1, INDIRECT_X)
       .add(0xB1, INDIRECT_Y),
-
     InstructionFamily("LDX")
       .add(0xA2, IMM)
       .add(0xA6, ZP)
       .add(0xB6, ZP_Y)
       .add(0xAE, ABS)
       .add(0xBE, ABS_Y),
-
     InstructionFamily("LDY")
       .add(0xA0, IMM)
       .add(0xA4, ZP)
@@ -234,12 +250,10 @@ object InstructionSet {
       .add(0x99, ABS_Y)
       .add(0x81, INDIRECT_X)
       .add(0x91, INDIRECT_Y),
-
     InstructionFamily("STX")
       .add(0x86, ZP)
       .add(0x96, ZP_Y)
       .add(0x8E, ABS),
-
     InstructionFamily("STY")
       .add(0x84, ZP)
       .add(0x94, ZP_X)
@@ -247,6 +261,8 @@ object InstructionSet {
   )
 
   val instructionsStr: Array[String] = instructions.map((family) => family.name)
-  val instructionLookup: Map[String, InstructionFamily] =
+
+  private val lookup: Map[String, InstructionFamily] =
     instructions.map((family) => (family.name, family)).toMap
+
 }

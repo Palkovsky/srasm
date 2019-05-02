@@ -1,25 +1,28 @@
 ORG $1000
-
+    
 DATA {
-arr1: 
-arr2:   
-}
-
-CODE {
-    BRK
-TXS:    
+arr1: DUP 16
+arr2:
+    DB $00
+    DB $01
+    DB $02
 }
     
 CODE {
-    LDX #$FF, X
+    LDX $FF
     TXS
     BRK
 
-    JSR SUBRT_2
+    JSR $FFFF
+    JMP ($ABCD)
+    ADC ($FF, X)
+    LDA #arr1
+    JMP (SUBRT_2)
+    STA MEM,Y 
     
 SUBRT_1:    
-    JSR SUBRT_2
+    JSR $ABCD
 
 SUBRT_2:    
-    JSR SUBRT_1
+    JSR $DDEE
 }

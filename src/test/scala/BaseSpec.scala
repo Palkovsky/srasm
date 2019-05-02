@@ -1,4 +1,5 @@
 import org.scalatest.{FunSpec, Matchers}
+import parser._
 
 class BaseSpec extends FunSpec with Matchers {
   def parse(code: String): Seq[ASTNode] = ASMParser.runParser(code) match {

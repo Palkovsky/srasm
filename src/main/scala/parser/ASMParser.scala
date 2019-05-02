@@ -1,14 +1,19 @@
+package parser
+
 import java.lang.{Long}
 import scala.util.matching.Regex
 import scala.util.parsing.combinator.RegexParsers
 
 sealed abstract class ASTNode
-case class RootNode(nodes: Seq[ASTNode]) extends ASTNode
-case class Segment(name: String, nodes: Seq[ASTNode]) extends ASTNode
-case class Instruction(inst: String, arg1: ASTNode = null, arg2: ASTNode = null) extends ASTNode
-case class Indirect(inst: Instruction) extends ASTNode
-case class IndirectX(inst: Instruction) extends ASTNode
-case class IndirectY(inst: Instruction) extends ASTNode
+case class RootNode(nodes: List[ASTNode]) extends ASTNode
+case class Segment(name: String, nodes: List[ASTNode]) extends ASTNode
+
+case class InstructionNode(inst: String, arg1: ASTNode = null, arg2: ASTNode = null) extends ASTNode
+case class Relative(inst: InstructionNode) extends ASTNode
+case class Indirect(inst: InstructionNode) extends ASTNode
+case class IndirectX(inst: InstructionNode) extends ASTNode
+case class IndirectY(inst: InstructionNode) extends ASTNode
+
 case class LabelDefinition(value: String) extends ASTNode
 case class Label(value: String) extends ASTNode
 case class Register(value: String) extends ASTNode
@@ -45,23 +50,34 @@ object ASMParser extends RegexParsers {
   private def address: Parser[ASTNode] = decimalNumber | hexadecimalNumber |  register | label
   private def immediate: Parser[Immediate] = immediatePrefix ~ address ^^ {case _ ~ addr => Immediate(addr)}
 
-  private def twoAryInstruction: Parser[Instruction] = instructionCode ~ (immediate | address) ~ argSeparator ~ register  ^^ {case inst ~ arg1 ~ _ ~ arg2 => Instruction(inst.toUpperCase(), arg1, arg2)}
-  private def oneAryInstruction: Parser[Instruction] = instructionCode ~ (immediate | address)  ^^ {case inst ~ arg1 => Instruction(inst.toUpperCase(), arg1)}
-  private def zeroAryInstruction: Parser[Instruction]  = instructionCode ^^ {case inst => Instruction(inst.toUpperCase())}
+  private def twoAryInstruction: Parser[InstructionNode] =
+    instructionCode ~ (immediate | address) ~ argSeparator ~ register  ^^ {case inst ~ arg1 ~ _ ~ arg2 => InstructionNode(inst.toUpperCase(), arg1, arg2)}
+
+  private def oneAryInstruction: Parser[InstructionNode] =
+    instructionCode ~ (immediate | address)  ^^ {case inst ~ arg1 => InstructionNode(inst.toUpperCase(), arg1)}
+
+  private def zeroAryInstruction: Parser[InstructionNode]  =
+    instructionCode ^^ {case inst => InstructionNode(inst.toUpperCase())}
+
+  // ex. BNE *-4 or BNE *LABEL1
+  private def relativeInstruction: Parser[Relative] =
+    instructionCode ~ "*" ~ (immediate | address) ^^ {case inst ~ _ ~ arg1 => Relative(InstructionNode(inst.toUpperCase(), arg1)) }
 
   // ex. JMP ($FFFF)
   private def indirectInstruction: Parser[Indirect] =
-    instructionCode ~  "(" ~ (immediate | address)  ~ ")" ^^ {case inst ~ _ ~ arg1  ~ _  => Indirect(Instruction(inst.toUpperCase(), arg1))} // Ex: STA ($15,X)
+    instructionCode ~  "(" ~ (immediate | address)  ~ ")" ^^ {case inst ~ _ ~ arg1  ~ _  => Indirect(InstructionNode(inst.toUpperCase(), arg1))} // Ex: STA ($15,X)
 
+  // Ex: STA ($15,X)
   private def indirectXInstruction: Parser[IndirectX] =
-   instructionCode ~  "(" ~ (immediate | address)  ~ argSeparator ~ register ~ ")" ^^ {case inst ~ _ ~ arg1 ~ _ ~ arg2 ~ _  => IndirectX(Instruction(inst.toUpperCase(), arg1, arg2))} // Ex: STA ($15,X)
+   instructionCode ~  "(" ~ (immediate | address)  ~ argSeparator ~ register ~ ")" ^^ {case inst ~ _ ~ arg1 ~ _ ~ arg2 ~ _  => IndirectX(InstructionNode(inst.toUpperCase(), arg1, arg2))} 
 
+  // Ex: STA ($15), Y
   private def indirectYInstruction: Parser[IndirectY] =
-    instructionCode ~ "(" ~ (immediate | address) ~  ")" ~ argSeparator ~ register ^^ {case inst ~ _ ~ arg1 ~ _ ~ _ ~ arg2 => IndirectY(Instruction(inst.toUpperCase(), arg1, arg2))} // Ex: STA ($15), Y
+    instructionCode ~ "(" ~ (immediate | address) ~  ")" ~ argSeparator ~ register ^^ {case inst ~ _ ~ arg1 ~ _ ~ _ ~ arg2 => IndirectY(InstructionNode(inst.toUpperCase(), arg1, arg2))}
 
-  private def instruction: Parser[Instruction] = twoAryInstruction | oneAryInstruction | zeroAryInstruction
+  private def instruction: Parser[InstructionNode] = twoAryInstruction | oneAryInstruction | zeroAryInstruction
 
-  private def directive: Parser[ASTNode] = labelDefinition | indirectXInstruction | indirectYInstruction |  indirectInstruction | instruction
+  private def directive: Parser[ASTNode] = labelDefinition | indirectXInstruction | indirectYInstruction |  indirectInstruction | relativeInstruction | instruction
   
   private def segment: Parser[Segment] = segmentName ~ "{" ~ rep[ASTNode](directive) ~ "}" ^^ {case seg  ~ _ ~ nodes ~ _  => Segment(seg.toUpperCase(), nodes)}
 

@@ -1,3 +1,5 @@
+package parser
+
 import compiler.{InstructionSet}
 
 object Lang {
@@ -8,7 +10,8 @@ object Lang {
 
   val DIRECTIVES: Array[String] = Array(
     "ORG",
-    "DB"
+    "DB",
+    "DUP"
   )
 
   val REGISTERS: Array[String] = Array(
@@ -18,4 +21,7 @@ object Lang {
   )
 
   val INSTRUCTIONS: Array[String] = InstructionSet.instructionsStr
+
+  def isInstruction(str: String): Boolean = INSTRUCTIONS.contains(str)
+  def isDirective(str: String): Boolean = DIRECTIVES.contains(str)
 }

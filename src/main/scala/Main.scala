@@ -1,4 +1,6 @@
 import java.nio.file.{ Files, Paths }
+import parser._
+import compiler._
 
 object Main extends App {
   if(args.length != 1){
@@ -11,5 +13,10 @@ object Main extends App {
   val str: String = new String(encoded);
 
   val ast: RootNode = ASMParser.runParser(str).get
-  ast.nodes.foreach(println)
+
+  val converter: ASTConverter = new ASTConverter(ast.nodes)
+
+  val pair = converter.runConverter()
+  pair._1.foreach((item) => println(s"${item}, SEGMENT: ${item.segment}"))
+  println(pair._2)
 }
