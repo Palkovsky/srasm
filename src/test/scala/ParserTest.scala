@@ -1,5 +1,5 @@
 class ParserTests extends BaseSpec{
-  describe("Parser (basic instructions)") {
+  describe("Parser - basic instructions") {
     it("Should parse instructions with decimal arguments"){
       parse("LDX 2137") should equal(List(
         Instruction("LDX", Number(2137))
@@ -13,8 +13,8 @@ class ParserTests extends BaseSpec{
     }
 
     it("Should parse instructions with hexadecimal arguments"){
-      parse("LDX $AB") should equal(List(
-        Instruction("LDX", Number(10*16+11))
+      parse("EOR $AB") should equal(List(
+        Instruction("EOR", Number(10*16+11))
       ))
     }
 
@@ -48,6 +48,12 @@ class ParserTests extends BaseSpec{
       ))
     }
 
+    it("Should parse indirect instructions with hexadecimal arguments"){
+      parse("JMP ($FFFF)") should equal(List(
+        Indirect(Instruction("JMP", Number(65535)))
+      ))
+    }
+
     it("Should parse instructions with label argument"){
       parse("JSR LABEL_1") should equal(List(
         Instruction("JSR", Label("LABEL_1"))
@@ -78,9 +84,23 @@ class ParserTests extends BaseSpec{
       ))
     }
 
-    it("Should not allow using instruction names as labels"){
-       parse("TXS:") should equal(List(
-        Instruction("TXS"), Unknown(":") // Unknown by default means error
+  }
+
+  describe("Parser - segment definitions"){
+    it("Should allow defining CODE and DATA segments"){
+      val code = """
+         ORG $1000
+         DATA {
+            ARR1: 
+         }
+         code {
+            BRK
+         }
+      """
+      parse(code) should equal(List(
+        Instruction("ORG", Number(4096)),
+        Segment("DATA", List(LabelDefinition("ARR1"))),
+        Segment("CODE", List(Instruction("BRK")))
       ))
     }
   }
