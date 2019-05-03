@@ -3,34 +3,52 @@ package compiler
 import parser._
 import AddressingMode._
 import SegmentType._
-import scala.collection.mutable.Map
+import scala.collection.mutable
+
+object Preprocessor{
+  def apply(ast: List[ASTNode]) = new Preprocessor(ast)
+}
 
 /*
- * ASTConverter
+ * Preprocessor
  * Class responsible for converting AST into format from which it'll be
  * easy to compile into bytes.
  * 
  * It also perfoms checks for using wrong addressing modes.
  */
-class ASTConverter(sequence: List[ASTNode]) {
+class Preprocessor private(sequence: List[ASTNode]) {
 
   /*
    * ASTconverter.State contains informations used in traversing AST, such
    * as label definition positions. 
    */
-  private class State(var segment: SegmentType, val labels: Map[String, Int], var result: List[Compilable])
+  private class State(var segment: SegmentType, val labels: mutable.Map[String, Int], var result: List[Compilable])
   private object State {
-    def apply(segment: SegmentType, labels: Map[String, Int], result: List[Compilable] = List()) = new State(segment, labels, result)
+    def apply(segment: SegmentType, labels: mutable.Map[String, Int], result: List[Compilable] = List()) = new State(segment, labels, result)
   }
 
   /*
-   * runConverter()
+   * runPreprocessor()
    * Translates AST into sequence of Compilable instructions.
    * It also remembers indexes of label definition.
    */
-  def runConverter(): (List[Compilable], Map[String, Int]) = {
-    val state: State = State(NONE, Map())
-    toCompilable(sequence, state)
+  def run(): (List[Compilable], mutable.Map[String, Int]) = {
+    /*
+     *  Sort sequence, so that:
+     *  <NONE> segment instructions
+     *  <CODE> segment
+     *  <DATA> segment
+     */
+    val sorted: List[ASTNode] = sequence.sortWith((a, b) => (a, b) match {
+      case (Segment(s1, _), Segment(s2, _)) =>
+        (SegmentType.fromString(s1) compare SegmentType.fromString(s2)) < 0
+      case (_, _:Segment) => true
+      case (_:Segment, _) => false
+      case _ => false
+    })
+
+    val state: State = State(NONE, mutable.Map())
+    toCompilable(sorted, state)
     (state.result, state.labels)
   }
 
@@ -59,7 +77,7 @@ class ASTConverter(sequence: List[ASTNode]) {
        // Compiler Directives
         case InstructionNode(dir, Number(value), null) :: tail if Lang.isDirective(dir) => {
           val directive: Compilable =
-            CompilableDirective(dir, NumberArg(value))
+            CompilableDirective(dir, ShortArg(value.toInt))
          (List(directive), tail)
         }        
 
@@ -76,9 +94,9 @@ class ASTConverter(sequence: List[ASTNode]) {
         }
 
        // IMM instruction(number)
-       case InstructionNode(inst, Immediate(Number(value)), null) :: tail  => {
+       case InstructionNode(inst, Immediate(Number(value)), null) :: tail if isByte(value) => {
          val instruction: CompilableInst =
-           CompilableInst(fetchInstruction(inst, IMM), arg = NumberArg(value))
+           CompilableInst(fetchInstruction(inst, IMM), arg = ByteArg(value.toInt))
          (List(instruction), tail)
        }
 
@@ -91,25 +109,29 @@ class ASTConverter(sequence: List[ASTNode]) {
 
        // ZP instruction(number)
        case InstructionNode(inst, Number(value), null) :: tail if isByte(value) => {
-         val instruction: CompilableInst = CompilableInst(fetchInstruction(inst, ZP), arg = NumberArg(value))
+         val instruction: CompilableInst =
+           CompilableInst(fetchInstruction(inst, ZP), arg = ByteArg(value.toInt))
          (List(instruction), tail)
        }       
 
        // ZP_X instruction(number)
        case InstructionNode(inst, Number(value), Register("X")) :: tail if isByte(value) => {
-         val instruction: CompilableInst = CompilableInst(fetchInstruction(inst, ZP_X), arg = NumberArg(value))
+         val instruction: CompilableInst =
+           CompilableInst(fetchInstruction(inst, ZP_X), arg = ByteArg(value.toInt))
          (List(instruction), tail)
        }      
 
        // ZP_Y instruction(number)
        case InstructionNode(inst, Number(value), Register("Y")) :: tail if isByte(value) => {
-         val instruction: CompilableInst = CompilableInst(fetchInstruction(inst, ZP_Y), arg = NumberArg(value))
+         val instruction: CompilableInst =
+           CompilableInst(fetchInstruction(inst, ZP_Y), arg = ByteArg(value.toInt))
          (List(instruction), tail)
        }
 
        // REL instruction(offset)
        case Relative(InstructionNode(inst, Number(value), null)) :: tail  if isByte(value) => {
-         val instruction: CompilableInst = CompilableInst(fetchInstruction(inst, REL), arg = NumberArg(value))
+         val instruction: CompilableInst =
+           CompilableInst(fetchInstruction(inst, REL), arg = ByteArg(value.toInt))
          (List(instruction), tail)
        }
 
@@ -121,31 +143,36 @@ class ASTConverter(sequence: List[ASTNode]) {
 
        // ABS instruction(number)
        case InstructionNode(inst, Number(value), null) :: tail if isShort(value) => {
-         val instruction: CompilableInst = CompilableInst(fetchInstruction(inst, ABS), arg = NumberArg(value))
+         val instruction: CompilableInst =
+           CompilableInst(fetchInstruction(inst, ABS), arg = ShortArg(value.toInt))
          (List(instruction), tail)
        }
 
        // ABS instruction(label)
        case InstructionNode(inst, Label(label), null) :: tail  => {
-         val instruction: CompilableInst = CompilableInst(fetchInstruction(inst, ABS), arg = LabelArg(label))
+         val instruction: CompilableInst =
+           CompilableInst(fetchInstruction(inst, ABS), arg = LabelArg(label))
          (List(instruction), tail)
        }          
 
        // ABS_X instruction(number)
        case InstructionNode(inst, Number(value), Register("X")) :: tail if isShort(value) => {
-         val instruction: CompilableInst = CompilableInst(fetchInstruction(inst, ABS_X), arg = NumberArg(value))
+         val instruction: CompilableInst =
+           CompilableInst(fetchInstruction(inst, ABS_X), arg = ShortArg(value.toInt))
          (List(instruction), tail)
        }
 
        // ABS_X instruction(label)
        case InstructionNode(inst, Label(label), Register("X")) :: tail  => {
-         val instruction: CompilableInst = CompilableInst(fetchInstruction(inst, ABS_X), arg = LabelArg(label))
+         val instruction: CompilableInst =
+           CompilableInst(fetchInstruction(inst, ABS_X), arg = LabelArg(label))
          (List(instruction), tail)
        }             
 
        // ABS_Y instruction(number)
        case InstructionNode(inst, Number(value), Register("Y")) :: tail if isShort(value) => {
-         val instruction: CompilableInst = CompilableInst(fetchInstruction(inst, ABS_Y), arg = NumberArg(value))
+         val instruction: CompilableInst =
+           CompilableInst(fetchInstruction(inst, ABS_Y), arg = ShortArg(value.toInt))
          (List(instruction), tail)
        }
 
@@ -156,40 +183,49 @@ class ASTConverter(sequence: List[ASTNode]) {
        }          
 
        // INDIRECT instruction (number)
-       case Indirect(InstructionNode(inst, Number(value), null)) :: tail => {
-         val instruction: CompilableInst = CompilableInst(fetchInstruction(inst, INDIRECT), arg = NumberArg(value))
+       case Indirect(InstructionNode(inst, Number(value), null)) :: tail  => {
+         val instruction: CompilableInst =
+           CompilableInst(fetchInstruction(inst, INDIRECT), arg = ByteArg(value.toInt))
          (List(instruction), tail)
        }
 
        // INDIRECT instruction (label)
        case Indirect(InstructionNode(inst, Label(label), null)) :: tail => {
-         val instruction: CompilableInst = CompilableInst(fetchInstruction(inst, INDIRECT), arg = LabelArg(label))
+         val instruction: CompilableInst =
+           CompilableInst(fetchInstruction(inst, INDIRECT), arg = LabelArg(label))
          (List(instruction), tail)
        } 
 
        // INDIRECT_X instruction (number)
        case IndirectX(InstructionNode(inst, Number(value), Register("X"))) :: tail  if isByte(value) => {
-         val instruction: CompilableInst = CompilableInst(fetchInstruction(inst, INDIRECT_X), arg = NumberArg(value))
+         val instruction: CompilableInst =
+           CompilableInst(fetchInstruction(inst, INDIRECT_X), arg = ByteArg(value.toInt))
          (List(instruction), tail)
        }
 
        // INDIRECT_X instruction (label)
        case IndirectX(InstructionNode(inst, Label(label), Register("X"))) :: tail  => {
-         val instruction: CompilableInst = CompilableInst(fetchInstruction(inst, INDIRECT_X), arg = LabelArg(label))
+         val instruction: CompilableInst =
+           CompilableInst(fetchInstruction(inst, INDIRECT_X), arg = LabelArg(label))
          (List(instruction), tail)
        }       
 
        // INDIRECT_Y instruction (number)
        case IndirectY(InstructionNode(inst, Number(value), Register("Y"))) :: tail  if isByte(value) => {
-         val instruction: CompilableInst = CompilableInst(fetchInstruction(inst, INDIRECT_Y), arg = NumberArg(value))
+         val instruction: CompilableInst =
+           CompilableInst(fetchInstruction(inst, INDIRECT_Y), arg = ByteArg(value.toInt))
          (List(instruction), tail)
        }
 
        // INDIRECT_Y instruction (label)
        case IndirectY(InstructionNode(inst, Label(label), Register("Y"))) :: tail  => {
-         val instruction: CompilableInst = CompilableInst(fetchInstruction(inst, INDIRECT_Y), arg = LabelArg(label))
+         val instruction: CompilableInst =
+           CompilableInst(fetchInstruction(inst, INDIRECT_Y), arg = LabelArg(label))
          (List(instruction), tail)
-       }        
+       }
+
+        case unsupported :: tail =>
+          throw new PreprocessorError(s"Unprocessable node: '${unsupported}'.")
     }
 
       // Update segment information
@@ -209,7 +245,7 @@ class ASTConverter(sequence: List[ASTNode]) {
    */
   private def fetchInstruction(inst: String, mode: AddressingMode): Instruction = InstructionSet.fetch(inst, mode) match {
     case Some(instruction) => instruction
-    case None => throw new CompilationError(s"Unrecognizable instruction: '${inst}' with '${mode.toString()}' addressing.")
+    case None => throw new PreprocessorError(s"Unrecognizable instruction: '${inst}' with '${mode.toString()}' addressing.")
   }
 
   // Helpers for validaiting if is valid Zero Page/Absolute

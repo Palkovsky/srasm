@@ -1,14 +1,19 @@
 ORG $1000
     
 DATA {
-arr1: DUP 16
+arr0:
+arr1: DUP 1
+    
 arr2:
-    DB $00
-    DB $01
-    DB $02
+    DB $03
+    DB $04
+    DB $05
 }
     
 CODE {
+    JMP (SUBRT_2)
+    
+    LDA #arr2
     LDX $FF
     TXS
     BRK
@@ -16,9 +21,7 @@ CODE {
     JSR $FFFF
     JMP ($ABCD)
     ADC ($FF, X)
-    LDA #arr1
-    JMP (SUBRT_2)
-    STA MEM,Y 
+    STA arr0, Y 
     
 SUBRT_1:    
     JSR $ABCD

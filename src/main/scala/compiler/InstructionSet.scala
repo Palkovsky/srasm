@@ -29,7 +29,9 @@ object AddressingMode extends Enumeration {
 
 import compiler.AddressingMode._
 
-case class Instruction(name: String, code: UByte, addressing: AddressingMode)
+case class Instruction(name: String, code: UByte, addressing: AddressingMode){
+  def getSize(): Int = AddressingMode.getSize(addressing) + 1
+}
 class InstructionFamily private(val name: String){
   private val instructions: mutable.Set[Instruction] = mutable.HashSet()
 

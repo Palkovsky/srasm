@@ -14,9 +14,10 @@ object Main extends App {
 
   val ast: RootNode = ASMParser.runParser(str).get
 
-  val converter: ASTConverter = new ASTConverter(ast.nodes)
-
-  val pair = converter.runConverter()
+  val pair = Preprocessor(ast.nodes).run()
   pair._1.foreach((item) => println(s"${item}, SEGMENT: ${item.segment}"))
   println(pair._2)
+
+  val bytecode = Compiler(pair).compile()
+  bytecode.foreach((byte) => println(s"0x${byte.toInt.toHexString}"))
 }
