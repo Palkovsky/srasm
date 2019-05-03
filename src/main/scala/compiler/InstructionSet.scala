@@ -42,7 +42,16 @@ class InstructionFamily private(val name: String){
 
   def get(mode: AddressingMode): Option[Instruction] =
     instructions.filter((inst) => inst.addressing == mode).headOption
+
+  def get(byte: UByte): Option[Instruction] =
+    instructions.filter(inst => inst.code == byte).headOption
+
+  def codes(): mutable.Set[UByte] =
+    instructions collect {
+      case inst: Instruction => inst.code
+    }
 }
+
 object InstructionFamily{
   def apply(name: String) = new InstructionFamily(name)
 }
@@ -51,6 +60,13 @@ object InstructionSet {
 
   def fetch(name: String, mode: AddressingMode): Option[Instruction] =
     lookup.get(name).flatMap((family) => family.get(mode))
+
+  def decode(byte: UByte): Option[Instruction] = {
+    for(family <- instructions){
+      if(family.codes().contains(byte)) return family.get(byte)
+    }
+    None
+  }
 
   val instructions: Array[InstructionFamily] = Array(
     // Arithmetic
@@ -71,7 +87,7 @@ object InstructionSet {
       .add(0xFD, ABS_X)
       .add(0xF9, ABS_Y)
       .add(0xE1, INDIRECT_X)
-      .add(0xF1, INDIRECT_Y),    
+      .add(0xF1, INDIRECT_Y),
 
     // Logic functions
     InstructionFamily("AND")
@@ -185,7 +201,7 @@ object InstructionSet {
     InstructionFamily("BVS").add(0x70, REL),
     InstructionFamily("JMP")
       .add(0x4C, ABS)
-      .add(0x2C, INDIRECT),
+      .add(0x6C, INDIRECT),
 
 
     // Subroutines/interrupts

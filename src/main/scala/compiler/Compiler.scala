@@ -3,6 +3,7 @@ package compiler
 import SegmentType._
 import scala.collection.mutable
 import spire.math.{ UByte, UShort }
+import utils.{ Bitwise }
 
 object Compiler{
   def apply(code: (List[Compilable], mutable.Map[String, Int])) = new Compiler(code._1, code._2)
@@ -14,15 +15,15 @@ object Compiler{
  */
 class Compiler private(instructions: List[Compilable], labels: mutable.Map[String, Int]){
 
-  var bytes: Array[UByte] = Array()
-  var basePtr: UShort = UShort(0x0000)
+  private var bytes: Array[UByte] = Array()
+  private var basePtr: UShort = UShort(0x0000)
 
   // Label references lookup
   // (Int, Int, String) ==> (Position, Size, Label, DerefOrNo)
-  var refs: mutable.Set[(Int, Int, String, Boolean)] = mutable.Set()
+  private var refs: mutable.Set[(Int, Int, String, Boolean)] = mutable.Set()
 
   // Lookup of labels inside bytecode
-  val labelsLookup: mutable.Map[String, Int] = mutable.Map()
+  private val labelsLookup: mutable.Map[String, Int] = mutable.Map()
 
   def compile(): Array[UByte] = {
     var bytesWritten: Int = 0
@@ -64,8 +65,9 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
 
         // Load lower and upper bye of addr
         case (false, 2) => {
-          bytes(ptr)     = UByte((short & UShort(0x00FF)).toInt)
-          bytes(ptr + 1) = UByte((short & UShort(0xFF00)).toInt)
+          val withOffset: UShort = basePtr + short
+          bytes(ptr)     = Bitwise.lower(withOffset)
+          bytes(ptr + 1) = Bitwise.upper(withOffset)
         }
 
         // Load immediate value into that place
@@ -79,6 +81,41 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
     bytes
   }
 
+  /*
+   * printBytecode()
+   * Pretty-prints output bytcode. 
+   * Should be called after compile()-ing first.
+   */
+  def printBytecode(): Unit = {
+    var shouldDecode: Int = 0
+    for((byte, i) <- bytes.zipWithIndex){
+
+      // Print labels pointg to this point
+      for(label <- labelsLookup.filter(pair => pair._2 == i).keys){
+        println(s"${label}:")
+      }
+
+      if(shouldDecode == 0){
+        InstructionSet.decode(byte) match {
+          case Some(Instruction(name, size, addressing)) => {
+            println(s"0x${byte.toInt.toHexString} (${name}, ${addressing})")
+            shouldDecode = AddressingMode.getSize(addressing) + 1
+          }
+          case _ => println(s"0x${byte.toInt.toHexString}")
+        }
+      } else{
+        println(s"0x${byte.toInt.toHexString}")
+      }
+
+      shouldDecode = shouldDecode - 1
+    }
+  }
+
+  /*
+   * handeInstruction()
+   * Puts instruction bytes into output.
+   * If instruction uses label, it is remembered here.
+   */
   private def handleInstruction(inst: Instruction, arg: Argument): Int = {
     val size: Int = inst.getSize
     val instructionBytes: Array[UByte] = Array.fill(size)(UByte(0x00))
@@ -91,10 +128,8 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
       case ByteArg(value) => instructionBytes(1) = UByte(value)
       case ShortArg(value) => {
         val short: UShort = UShort(value)
-        val low: UByte = UByte((short & UShort(0x00FF)).toInt)
-        val hi: UByte = UByte((short & UShort(0xFF00)).toInt)
-        instructionBytes(1) = low
-        instructionBytes(2) = hi
+        instructionBytes(1) = Bitwise.lower(short)
+        instructionBytes(2) = Bitwise.upper(short)
       }
       case LabelArg(label) => {
         // Not all labels are available, so we put marker in refs lookup
@@ -110,6 +145,10 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
     size
   }
 
+  /*
+   * handleDirective()
+   * Implements directives logic.
+   */
   private def handleDirective(name: String, arg: Argument): Int = (name, arg) match {
     case ("ORG", ShortArg(offset)) => {
       basePtr = UShort(offset)
