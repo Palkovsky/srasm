@@ -19,7 +19,7 @@ object Main extends App {
   pair._1.foreach((item) => println(s"${item}, SEGMENT: ${item.segment}"))
   println(pair._2)
 
-  println("=========== COMPILED ===========")
+  println("Compilation results:")
   val compiler = Compiler(pair)
   val bytecode = compiler.compile()
   compiler.printBytecode()

@@ -1,7 +1,11 @@
 ORG $1000
+
+define TTY_OUT $0100
+define TTY_IN  $0010
+define CLR $55
     
 DATA {
-arr0:
+
 arr1: DUP 1
     
 arr2:
@@ -11,21 +15,22 @@ arr2:
 }
     
 CODE {
-    JMP (SUBRT_2)
+    LDA arr1
+    LDX #$02
     
-    LDA #arr2
-    LDX $FF
-    TXS
+    CMP arr2, X
+    BCS *SUBRT_2
+
+SUBRT_1:
+    LDA #$45
+    STA TTY_OUT
+    JMP (EXIT)
+    
+SUBRT_2:
+    LDA #$44
+    STA $0101
+    BCS *SUBRT_1
+    
+EXIT:
     BRK
-
-    JSR $FFFF
-    JMP ($ABCD)
-    ADC ($FF, X)
-    STA arr0, Y 
-    
-SUBRT_1:    
-    JSR $ABCD
-
-SUBRT_2:    
-    JSR $DDEE
 }

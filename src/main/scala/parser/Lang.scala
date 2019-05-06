@@ -24,4 +24,5 @@ object Lang {
 
   def isInstruction(str: String): Boolean = INSTRUCTIONS.contains(str)
   def isDirective(str: String): Boolean = DIRECTIVES.contains(str)
+  def isSegment(str: String): Boolean = SEGMENTS.contains(str)
 }
