@@ -46,13 +46,14 @@ object ASMParser extends RegexParsers {
   private def any: Parser[Unknown] = ".".r ^^ { str => Unknown(str) }
   private def decimalNumber: Parser[Number] = "[0-9]+".r ^^ { str => Number(Long.parseLong(str, 10)) }
   private def hexadecimalNumber: Parser[Number] = hexPrefix ~ "[0-9a-fA-F]+".r ^^ {case _ ~ str => Number(Long.parseLong(str, 16)) }
-  private def labelDefinition: Parser[LabelDefinition] = "[a-zA-Z0-9_]+:".r ^^ { str => LabelDefinition(str.substring(0, str.length()-1)) }
+
   private def label: Parser[Label] = not(instructionCode | segmentName) ~> "[a-zA-Z0-9_]+".r  ^^ { str => Label(str)}
+  private def labelDefinition: Parser[LabelDefinition] =  not(instructionCode | segmentName) ~> "[a-zA-Z0-9_]+:".r ^^ { str  => LabelDefinition(str.substring(0, str.length()-1)) }
 
   private def macroDef: Parser[MacroNumberDef] = "define" ~ label ~ (decimalNumber | hexadecimalNumber) ^^ {case _ ~ label ~ num => MacroNumberDef(label, num)}
   private def macros: Parser[MacroNumberDef] = macroDef
 
-  private def address: Parser[ASTNode] = decimalNumber | hexadecimalNumber |  register | label
+  private def address: Parser[ASTNode] = decimalNumber | hexadecimalNumber |  register | (not(labelDefinition) ~> label)
   private def immediate: Parser[Immediate] = immediatePrefix ~ address ^^ {case _ ~ addr => Immediate(addr)}
 
   private def twoAryInstruction: Parser[InstructionNode] =
@@ -82,13 +83,13 @@ object ASMParser extends RegexParsers {
 
   private def instruction: Parser[InstructionNode] = twoAryInstruction | oneAryInstruction | zeroAryInstruction
 
-  private def directive: Parser[ASTNode] = labelDefinition | indirectXInstruction | indirectYInstruction |  indirectInstruction | relativeInstruction | instruction
+  private def directive: Parser[ASTNode] = indirectXInstruction | indirectYInstruction |  indirectInstruction | relativeInstruction | instruction | labelDefinition
 
   private def segment: Parser[Segment] = segmentName ~ "{" ~ rep[ASTNode](directive) ~ "}" ^^ {
     case seg  ~ _ ~ nodes ~ _  => new Segment(seg.toUpperCase(), nodes)
   }
 
-  private def asm: Parser[RootNode] = rep[ASTNode](segment | macros | directive) ^^ { nodes => RootNode(nodes) }
+  private def asm: Parser[RootNode] = rep[ASTNode](directive | segment | macros) ^^ { nodes => RootNode(nodes) }
 
   private def stripOneLineComments(code: String): String =
     code.lines.toStream
