@@ -89,12 +89,39 @@ object ASMParser extends RegexParsers {
 
   private def asm: Parser[RootNode] = rep[ASTNode](macros | segment | directive) ^^ { nodes => RootNode(nodes) }
 
+
+  private def stripOneLineComments(code: String): String =
+    code.lines.toStream
+      .map((line: String) => line.takeWhile((char) => char.toString() != Lang.ONE_LINE_COMMENT))
+      .foldLeft("")((acc: String, line: String) => acc.concat(line))
+  
+
+  private def stripMultiLineComments(code: String): String = {
+    var input: String = code
+    var stripped: String = ""
+    var opened: Int = 0
+
+    while(!input.isEmpty()){
+      if(input.startsWith(Lang.MULTI_LINE_COMMENT_OPEN)){
+        input = input.drop(Lang.MULTI_LINE_COMMENT_OPEN.size)
+        opened = opened + 1
+      }else if(input.startsWith(Lang.MULTI_LINE_COMMENT_CLOSE)){
+        input = input.drop(Lang.MULTI_LINE_COMMENT_CLOSE.size)
+        opened = Math.max(opened - 1, 0)
+      } else if(opened == 0){
+        stripped = stripped.concat(input.head.toString())
+        input = input.tail
+      } else {
+        input = input.tail
+      }
+    }
+
+    stripped
+  }
+
   def runParser(code: String): ParseResult[RootNode] = {
     // Remove comments
-    val stripped: String = code.lines.toStream
-      .map((line: String) => line.takeWhile((char) => char != ';'))
-      .foldLeft("")((acc: String, line: String) => acc.concat(line))
-
+    val stripped: String = stripMultiLineComments(stripOneLineComments(code))
     parse(asm, stripped)
   }
 }

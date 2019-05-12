@@ -3,6 +3,11 @@ package parser
 import compiler.{InstructionSet}
 
 object Lang {
+
+  val ONE_LINE_COMMENT: String = ";"
+  val MULTI_LINE_COMMENT_OPEN: String = "/*"
+  val MULTI_LINE_COMMENT_CLOSE: String = "*/"
+
   val SEGMENTS: Array[String] = Array(
     "DATA",
     "CODE"

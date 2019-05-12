@@ -120,16 +120,42 @@ class ParserTests extends BaseSpec{
   }
 
     describe("Parser - comments"){
-    it("Should ignore comments"){
-      val code = """
+      it("Should ignore one-line comments"){
+        val code = """
           LDA #$44 ;Put 68 in memory
           ; STA $0100
           STA $0101 ;Print it to the terminal device 
       """
-      parse(code) should equal(List(
-        InstructionNode("LDA", Immediate(Number(68))),
-        InstructionNode("STA", Number(257))
-      ))
-    }
+        parse(code) should equal(List(
+          InstructionNode("LDA", Immediate(Number(68))),
+          InstructionNode("STA", Number(257))
+        ))
+      }
+
+     it("Should ignore multi-line comments"){
+        val code = """
+          /* COMMENT */
+          /*
+          LDA #$44 ;Put 68 in memory
+          STA $0100
+          */
+          STA $0101 ;Print it to the terminal device 
+      """
+        parse(code) should equal(List(
+          InstructionNode("STA", Number(257))
+        ))
+     }
+
+      it("Shouldn't mind unclosed multi-line comment"){
+        val code = """
+          /* COMMENT
+          /*
+          LDA #$44 ;Put 68 in memory
+          STA $0100
+          */
+          STA $0101 ;Print it to the terminal device 
+      """
+        parse(code) should equal(List())
+      }
   }
 }
