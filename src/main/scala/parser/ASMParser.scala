@@ -36,7 +36,6 @@ object ASMParser extends RegexParsers {
   private def hexPrefix: Parser[String] = "$"
   private def immediatePrefix: Parser[String] = "#"
   private def argSeparator: Parser[String] = ","
-  private def commentSign: Parser[String] = ";"
 
   private def register: Parser[Register] = alternative(Lang.REGISTERS) ^^ {str => Register(str)}
   private def instructionCode: Parser[String] =
@@ -85,14 +84,16 @@ object ASMParser extends RegexParsers {
 
   private def directive: Parser[ASTNode] = labelDefinition | indirectXInstruction | indirectYInstruction |  indirectInstruction | relativeInstruction | instruction
 
-  private def segment: Parser[Segment] = segmentName ~ "{" ~ rep[ASTNode](directive) ~ "}" ^^ {case seg  ~ _ ~ nodes ~ _  => Segment(seg.toUpperCase(), nodes)}
+  private def segment: Parser[Segment] = segmentName ~ "{" ~ rep[ASTNode](directive) ~ "}" ^^ {
+    case seg  ~ _ ~ nodes ~ _  => new Segment(seg.toUpperCase(), nodes)
+  }
 
-  private def asm: Parser[RootNode] = rep[ASTNode](macros | segment | directive) ^^ { nodes => RootNode(nodes) }
-
+  private def asm: Parser[RootNode] = rep[ASTNode](segment | macros | directive) ^^ { nodes => RootNode(nodes) }
 
   private def stripOneLineComments(code: String): String =
     code.lines.toStream
       .map((line: String) => line.takeWhile((char) => char.toString() != Lang.ONE_LINE_COMMENT))
+      .map((line: String) => line + System.lineSeparator())
       .foldLeft("")((acc: String, line: String) => acc.concat(line))
   
 

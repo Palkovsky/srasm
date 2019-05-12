@@ -275,7 +275,7 @@ object InstructionSet {
     InstructionFamily("STY")
       .add(0x84, ZP)
       .add(0x94, ZP_X)
-      .add(0x8C, ABS),
+      .add(0x8C, ABS)
   )
 
   val instructionsStr: Array[String] = instructions.map((family) => family.name)
