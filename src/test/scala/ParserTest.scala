@@ -134,6 +134,22 @@ class ParserTests extends BaseSpec{
         Segment("CODE", List(InstructionNode("BRK")))
       ))
     }
+
+    it("Should detect IRQ and NMI segments"){
+      val code = """
+         IRQ{
+            TXA
+         }
+         NMI{
+            PHP
+         }
+      """
+      parse(code) should equal(
+        List(
+          Segment("IRQ", List(InstructionNode("TXA"))),
+          Segment("NMI", List(InstructionNode("PHP")))
+          ))
+    }
   }
 
     describe("Parser - comments"){

@@ -1,5 +1,6 @@
 ORG $1000
 
+define TTY_IN  $0101
 define TTY_OUT $0100
     
 DATA {
@@ -54,4 +55,13 @@ PRINT:
 
 EXIT:
     BRK
+}
+
+IRQ{
+  LDA TTY_IN
+  STA TTY_OUT
+}
+
+NMI{
+  BRK
 }

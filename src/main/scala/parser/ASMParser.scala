@@ -41,7 +41,8 @@ object ASMParser extends RegexParsers {
   private def instructionCode: Parser[String] =
     alternative(Lang.INSTRUCTIONS) | alternative(Lang.INSTRUCTIONS.map(str => str.toLowerCase)) |
     alternative(Lang.DIRECTIVES) | alternative(Lang.DIRECTIVES.map(str => str.toLowerCase))
-  private def segmentName: Parser[String] = alternative(Lang.SEGMENTS) | alternative(Lang.SEGMENTS.map(str => str.toLowerCase))
+  private def segmentName: Parser[String] =
+    alternative(Lang.SEGMENTS) | alternative(Lang.SEGMENTS.map(str => str.toLowerCase))
 
   private def any: Parser[Unknown] = ".".r ^^ { str => Unknown(str) }
   private def decimalNumber: Parser[Number] = "[0-9]+".r ^^ { str => Number(Long.parseLong(str, 10)) }

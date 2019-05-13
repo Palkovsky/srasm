@@ -8,6 +8,10 @@ import utils.{ Bitwise }
 
 
 object Compiler{
+  val IVT_PREAMB_SIZE: Int = 10
+  val IVT_IRQ_ADDR: UShort = UShort(0xFFFE)
+  val IVT_NMI_ADDR: UShort = UShort(0xFFFA)
+
   def apply(code: (List[Compilable], mutable.Map[String, Int])) = new Compiler(code._1, code._2)
 }
 
@@ -17,7 +21,6 @@ object Compiler{
  */
 class Compiler private(instructions: List[Compilable], labels: mutable.Map[String, Int]){
 
-
   private sealed abstract class ReferenceType
   private case class RelativeRef() extends ReferenceType
   private case class ImmediateRef() extends ReferenceType
@@ -25,6 +28,7 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
   private case class Reference(position: Int, size: Int, label: String, refType: ReferenceType)
 
   private var bytes: Array[UByte] = Array()
+  private var preambSize: UShort = UShort(0x0000) // size of extra compiler code, ex. IVT setup
   private var basePtr: UShort = UShort(0x0000)
 
   // Label references lookup
@@ -34,7 +38,12 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
   private val labelsLookup: mutable.Map[String, Int] = mutable.Map()
 
   def compile(): Array[UByte] = {
-    var bytesWritten: Int = 0
+    /*
+     * Detect IRQ/NMI segments. Add proper padding at begining.
+     */
+    preambSize = preambSize + UShort({if (labels.contains("NMI")) Compiler.IVT_PREAMB_SIZE else 0})
+    preambSize = preambSize + UShort({if (labels.contains("IRQ")) Compiler.IVT_PREAMB_SIZE else 0})
+    bytes = bytes ++ Array.fill(preambSize.toInt)(UByte(0x00))
 
     /*
      *  Initial phase of transforming into bytecode.
@@ -45,15 +54,27 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
       // Check if any label points at this index
       // if so, translate it from indexes to bytes
       for(label <- labels.filter(pair => pair._2 == i).keys){
-        labelsLookup += (label -> bytesWritten)
+        labelsLookup += (label -> bytes.length)
       }
 
-      bytesWritten += {
-        item match {
-          case CompilableDirective(directive, arg) => handleDirective(directive, arg)
-          case CompilableInst(inst, arg) => handleInstruction(inst, arg)
-        }
-      }}
+      item match {
+        case CompilableDirective(directive, arg) => handleDirective(directive, arg)
+        case CompilableInst(inst, arg) => handleInstruction(inst, arg)
+      }
+    }
+
+    /*
+     * Hande IVTs
+     */
+    var ivtOff: Int = 0
+    if (labels.contains("NMI")) {
+      handleIVT("NMI", Compiler.IVT_NMI_ADDR, ivtOff)
+      ivtOff += Compiler.IVT_PREAMB_SIZE
+    }
+    if (labels.contains("IRQ")){
+      handleIVT("IRQ", Compiler.IVT_IRQ_ADDR, ivtOff)
+      ivtOff += Compiler.IVT_PREAMB_SIZE
+    }
 
     /*
      * Second phase - Substitution of labels with addresses.
@@ -63,7 +84,7 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
       // Lookup labels table for address
       val addr: Int = labelsLookup.get(label) match {
         case Some(value) => value
-        case _ => 
+        case _ =>
           throw new CompilationError(s"Undefined label '${label}'!")
       }
       val short: UShort = UShort(addr)
@@ -75,7 +96,7 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
           bytes(ptr) = UByte((short & UShort(0x00FF)).toInt)
         }
         case (AddressRef(), 2) => {
-          val withOffset: UShort = basePtr + short
+          val withOffset: UShort = getRelativePosition(short)
           bytes(ptr)     = Bitwise.lower(withOffset)
           bytes(ptr + 1) = Bitwise.upper(withOffset)
         }
@@ -98,6 +119,35 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
     }
 
     bytes
+  }
+
+  /*
+   * Initialize IVT handler.
+   * For IRQ:
+   *   LDA #LO IRQ  // 2 bytes
+   *   STA $FFFE    // 3 bytes
+   *   LDA #HI IRQ  // 2 byres
+   *   STA $FFFF    // 3 bytes
+   */
+  private def handleIVT(name: String, ivtAddr: UShort, offset: Int): Unit = {
+    val handlerAddr: UShort =  getRelativePosition(UShort(labelsLookup.get(name).get))
+    val code: Array[UByte] = Array(
+      // Lower byte
+      InstructionSet.fetch("LDA", AddressingMode.IMM).get.code,
+      Bitwise.lower(handlerAddr),
+      InstructionSet.fetch("STA", AddressingMode.ABS).get.code,
+      Bitwise.lower(ivtAddr),
+      Bitwise.upper(ivtAddr),
+
+      // Higher byte
+      InstructionSet.fetch("LDA", AddressingMode.IMM).get.code,
+      Bitwise.upper(handlerAddr),
+      InstructionSet.fetch("STA", AddressingMode.ABS).get.code,
+      Bitwise.lower(ivtAddr + UShort(1)),
+      Bitwise.upper(ivtAddr + UShort(1))
+    )
+
+    for(i <- 0 until code.size) bytes(offset + i) = code(i)
   }
 
   /*
@@ -159,6 +209,11 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
     }
     case dir => throw new CompilationError(s"Unknown directive: ${dir}.")
   }
+
+  /*
+   * Relative address form label resolving.
+   */
+  private def getRelativePosition(addr: UShort): UShort = basePtr  + addr
 
     /*
    * printBytecode()

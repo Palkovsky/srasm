@@ -13,7 +13,6 @@ object Preprocessor{
  * Preprocessor
  * Class responsible for converting AST into format from which it'll be
  * easy to compile into bytes.
- * 
  * It also perfoms checks for using wrong addressing modes.
  */
 class Preprocessor private(sequence: List[ASTNode]) {
@@ -42,6 +41,8 @@ class Preprocessor private(sequence: List[ASTNode]) {
      *  Macro definitions
      *  <NONE> segment instructions
      *  <CODE> segment
+     *  <NMI> segment
+     *  <IRQ> segment
      *  <DATA> segment
      */
     val sorted: List[ASTNode] = sequence.sortWith((a, b) => (a, b) match {
@@ -101,7 +102,7 @@ class Preprocessor private(sequence: List[ASTNode]) {
           val directive: Compilable =
             CompilableDirective(dir, ShortArg(value.toInt))
          (List(directive), tail)
-        }        
+        }
 
        // Implied instruction
        case InstructionNode(inst, null, null) :: tail => {
@@ -134,14 +135,14 @@ class Preprocessor private(sequence: List[ASTNode]) {
          val instruction: CompilableInst =
            CompilableInst(fetchInstruction(inst, ZP), arg = ByteArg(value.toInt))
          (List(instruction), tail)
-       }       
+       }
 
        // ZP_X instruction(number)
        case InstructionNode(inst, Number(value), Register("X")) :: tail if isByte(value) => {
          val instruction: CompilableInst =
            CompilableInst(fetchInstruction(inst, ZP_X), arg = ByteArg(value.toInt))
          (List(instruction), tail)
-       }      
+       }
 
        // ZP_Y instruction(number)
        case InstructionNode(inst, Number(value), Register("Y")) :: tail if isByte(value) => {
@@ -162,7 +163,7 @@ class Preprocessor private(sequence: List[ASTNode]) {
          val instruction: CompilableInst =
            CompilableInst(fetchInstruction(inst, REL), arg = generateArg(label, state.macros))
          (List(instruction), tail)
-       }          
+       }
 
        // ABS instruction(number)
        case InstructionNode(inst, Number(value), null) :: tail if isShort(value) => {
@@ -176,7 +177,7 @@ class Preprocessor private(sequence: List[ASTNode]) {
          val instruction: CompilableInst =
            CompilableInst(fetchInstruction(inst, ABS), arg = generateArg(label, state.macros))
          (List(instruction), tail)
-       }          
+       }
 
        // ABS_X instruction(number)
        case InstructionNode(inst, Number(value), Register("X")) :: tail if isShort(value) => {
@@ -190,7 +191,7 @@ class Preprocessor private(sequence: List[ASTNode]) {
          val instruction: CompilableInst =
            CompilableInst(fetchInstruction(inst, ABS_X), arg = generateArg(label, state.macros))
          (List(instruction), tail)
-       }             
+       }
 
        // ABS_Y instruction(number)
        case InstructionNode(inst, Number(value), Register("Y")) :: tail if isShort(value) => {
@@ -203,7 +204,7 @@ class Preprocessor private(sequence: List[ASTNode]) {
        case InstructionNode(inst, Label(label), Register("Y")) :: tail => {
          val instruction: CompilableInst = CompilableInst(fetchInstruction(inst, ABS_Y), arg = generateArg(label, state.macros))
          (List(instruction), tail)
-       }          
+       }
 
        // INDIRECT instruction (number)
        case Indirect(InstructionNode(inst, Number(value), null)) :: tail  => {
@@ -217,7 +218,7 @@ class Preprocessor private(sequence: List[ASTNode]) {
          val instruction: CompilableInst =
            CompilableInst(fetchInstruction(inst, INDIRECT), arg = generateArg(label, state.macros))
          (List(instruction), tail)
-       } 
+       }
 
        // INDIRECT_X instruction (number)
        case IndirectX(InstructionNode(inst, Number(value), Register("X"))) :: tail  if isByte(value) => {
@@ -231,7 +232,7 @@ class Preprocessor private(sequence: List[ASTNode]) {
          val instruction: CompilableInst =
            CompilableInst(fetchInstruction(inst, INDIRECT_X), arg = generateArg(label, state.macros))
          (List(instruction), tail)
-       }       
+       }
 
        // INDIRECT_Y instruction (number)
        case IndirectY(InstructionNode(inst, Number(value), Register("Y"))) :: tail  if isByte(value) => {
@@ -262,7 +263,7 @@ class Preprocessor private(sequence: List[ASTNode]) {
   }
 
   /*
-   * fetchinstruction()
+   * fetchInstruction()
    * Tries to resolve instruction with given addressingmode.
    * if there's none it throws an error.
    */
