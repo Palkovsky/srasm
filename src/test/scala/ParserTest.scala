@@ -97,7 +97,24 @@ class ParserTests extends BaseSpec{
         LabelDefinition("MY_LABEL")
       ))
     }
+  }
 
+  describe("Parser - token separation problems problems"){
+    it("Should allow defining zero-arg instruction before labelDefinition"){
+      val code = """
+      CLS
+      label1:
+        CLD
+        ADC #40
+      """
+      parse(code) should equal(
+        List(
+          InstructionNode("CLS"),
+          LabelDefinition("label1"),
+          InstructionNode("CLD"),
+          InstructionNode("ADC", Immediate(Number(40)))
+       ))
+    }
   }
 
   describe("Parser - segment definitions"){

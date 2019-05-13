@@ -47,13 +47,13 @@ object ASMParser extends RegexParsers {
   private def decimalNumber: Parser[Number] = "[0-9]+".r ^^ { str => Number(Long.parseLong(str, 10)) }
   private def hexadecimalNumber: Parser[Number] = hexPrefix ~ "[0-9a-fA-F]+".r ^^ {case _ ~ str => Number(Long.parseLong(str, 16)) }
 
-  private def label: Parser[Label] = not(instructionCode | segmentName) ~> "[a-zA-Z0-9_]+".r  ^^ { str => Label(str)}
+  private def label: Parser[Label] = not(labelDefinition | instructionCode | segmentName) ~> "[a-zA-Z0-9_]+".r  ^^ { str => Label(str)}
   private def labelDefinition: Parser[LabelDefinition] =  not(instructionCode | segmentName) ~> "[a-zA-Z0-9_]+:".r ^^ { str  => LabelDefinition(str.substring(0, str.length()-1)) }
 
   private def macroDef: Parser[MacroNumberDef] = "define" ~ label ~ (decimalNumber | hexadecimalNumber) ^^ {case _ ~ label ~ num => MacroNumberDef(label, num)}
   private def macros: Parser[MacroNumberDef] = macroDef
 
-  private def address: Parser[ASTNode] = decimalNumber | hexadecimalNumber |  register | (not(labelDefinition) ~> label)
+  private def address: Parser[ASTNode] = decimalNumber | hexadecimalNumber  | (not(labelDefinition) ~> label)
   private def immediate: Parser[Immediate] = immediatePrefix ~ address ^^ {case _ ~ addr => Immediate(addr)}
 
   private def twoAryInstruction: Parser[InstructionNode] =
@@ -63,7 +63,7 @@ object ASMParser extends RegexParsers {
     instructionCode ~ (immediate | address)  ^^ {case inst ~ arg1 => InstructionNode(inst.toUpperCase(), arg1)}
 
   private def zeroAryInstruction: Parser[InstructionNode]  =
-    instructionCode ^^ {case inst => InstructionNode(inst.toUpperCase())}
+    instructionCode  ^^ {case inst => InstructionNode(inst.toUpperCase())}
 
   // ex. BNE *-4 or BNE *LABEL1
   private def relativeInstruction: Parser[Relative] =
