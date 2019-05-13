@@ -9,8 +9,7 @@ import utils.{ Bitwise }
 
 object Compiler{
   val IVT_PREAMB_SIZE: Int = 10
-  val IVT_IRQ_ADDR: UShort = UShort(0xFFFE)
-  val IVT_NMI_ADDR: UShort = UShort(0xFFFA)
+  val IVT: Array[(String, UShort)] = Array(("NMI", UShort(0xFFFA)), ("IRQ", UShort(0xFFFE)))
 
   def apply(code: (List[Compilable], mutable.Map[String, Int])) = new Compiler(code._1, code._2)
 }
@@ -28,7 +27,6 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
   private case class Reference(position: Int, size: Int, label: String, refType: ReferenceType)
 
   private var bytes: Array[UByte] = Array()
-  private var preambSize: UShort = UShort(0x0000) // size of extra compiler code, ex. IVT setup
   private var basePtr: UShort = UShort(0x0000)
 
   // Label references lookup
@@ -39,15 +37,15 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
 
   def compile(): Array[UByte] = {
     /*
-     * Detect IRQ/NMI segments. Add proper padding at begining.
+     * Phase 1 - Detect IRQ/NMI segments. Add proper padding at begining.
      */
-    preambSize = preambSize + UShort({if (labels.contains("NMI")) Compiler.IVT_PREAMB_SIZE else 0})
-    preambSize = preambSize + UShort({if (labels.contains("IRQ")) Compiler.IVT_PREAMB_SIZE else 0})
-    bytes = bytes ++ Array.fill(preambSize.toInt)(UByte(0x00))
+    for((ivName, _) <- Compiler.IVT if labels.contains(ivName)){
+      bytes = bytes ++ Array.fill(Compiler.IVT_PREAMB_SIZE)(UByte(0x00))
+    }
 
     /*
-     *  Initial phase of transforming into bytecode.
-     *  If collects info about lables references, for future correcting.
+     *  Phase 2
+     *  Transform what's possible into bytecode. Collect info about label referenes.
      */
     for((item, i) <- instructions.zipWithIndex){
 
@@ -64,20 +62,18 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
     }
 
     /*
-     * Hande IVTs
+     * Phase 3
+     * Setup IVT with collected IRQ/NMI address.
      */
     var ivtOff: Int = 0
-    if (labels.contains("NMI")) {
-      handleIVT("NMI", Compiler.IVT_NMI_ADDR, ivtOff)
-      ivtOff += Compiler.IVT_PREAMB_SIZE
-    }
-    if (labels.contains("IRQ")){
-      handleIVT("IRQ", Compiler.IVT_IRQ_ADDR, ivtOff)
+    for((ivName, addr) <- Compiler.IVT if labelsLookup.contains(ivName)){
+      handleIVT(ivName, addr, ivtOff)
       ivtOff += Compiler.IVT_PREAMB_SIZE
     }
 
     /*
-     * Second phase - Substitution of labels with addresses.
+     * Phase 4
+     * Substitite label references with addresses.
      */
     for((ptr, size, label, refType) <- refs.map(ref => Reference.unapply(ref).get)){
 
@@ -122,7 +118,7 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
   }
 
   /*
-   * Initialize IVT handler.
+   * Initialize interupt handler.
    * For IRQ:
    *   LDA #LO IRQ  // 2 bytes
    *   STA $FFFE    // 3 bytes
