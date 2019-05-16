@@ -157,5 +157,66 @@ class ParserTests extends BaseSpec{
       """
         parse(code) should equal(List())
       }
-  }
+    }
+
+    describe("Parser - string literals"){
+      it("Should detect string literals with sigle parenthesis"){
+        val code = """
+          LDA #$44
+          'xDDD'
+          STA $0101
+      """
+        parse(code) should equal(List(
+          InstructionNode("LDA", Immediate(Number(68))),
+          StringLiteral("xDDD"),
+          InstructionNode("STA", Number(257))
+        ))
+      }
+
+     it("Should detect string literals with double parenthesis"){
+        val code = """
+          LDA #$44
+          "xDDD"
+      """
+        parse(code) should equal(List(
+          InstructionNode("LDA", Immediate(Number(68))),
+          StringLiteral("xDDD")
+        ))
+     }
+
+     it("Should detect string literals inside segments"){
+        val code = """
+          DATA {
+          buff:
+            'xDD'
+          }
+      """
+        parse(code) should equal(List(Segment("DATA", List(
+          LabelDefinition("buff"),
+          StringLiteral("xDD")
+        ))))
+      }
+
+     it("Should detect string literals with nested single-parenthesis"){
+        val code = """
+          LDA #$44
+          "xD'D'D"
+      """
+        parse(code) should equal(List(
+          InstructionNode("LDA", Immediate(Number(68))),
+          StringLiteral("xD'D'D")
+        ))
+     }
+
+     it("Should detect string literals with nested double-parenthesis"){
+        val code = """
+          LDA #$44
+          'xD"D"D'
+      """
+        parse(code) should equal(List(
+          InstructionNode("LDA", Immediate(Number(68))),
+          StringLiteral("xD\"D\"D")
+        ))
+      }
+    }
 }

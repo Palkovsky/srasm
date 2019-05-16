@@ -19,6 +19,7 @@ case class Label(value: String) extends ASTNode
 case class Register(value: String) extends ASTNode
 case class Number(value: Long) extends ASTNode
 case class Immediate(value: ASTNode) extends ASTNode
+case class StringLiteral(value: String) extends ASTNode
 case class Unknown(value: String) extends ASTNode
 
 // Macros
@@ -52,6 +53,8 @@ object ASMParser extends RegexParsers {
 
   private def macroDef: Parser[MacroNumberDef] = "define" ~ label ~ (decimalNumber | hexadecimalNumber) ^^ {case _ ~ label ~ num => MacroNumberDef(label, num)}
   private def macros: Parser[MacroNumberDef] = macroDef
+  private def stringLiteral: Parser[StringLiteral] =
+    (("'" ~  "[^']*".r  ~ "'") | ("\"" ~  "[^\"]*".r  ~ "\""))  ^^ { case _ ~ value ~ _ => StringLiteral(value)}
 
   private def address: Parser[ASTNode] = decimalNumber | hexadecimalNumber |  register | (not(labelDefinition) ~> label)
   private def immediate: Parser[Immediate] = immediatePrefix ~ address ^^ {case _ ~ addr => Immediate(addr)}
@@ -83,13 +86,13 @@ object ASMParser extends RegexParsers {
 
   private def instruction: Parser[InstructionNode] = twoAryInstruction | oneAryInstruction | zeroAryInstruction
 
-  private def directive: Parser[ASTNode] = indirectXInstruction | indirectYInstruction |  indirectInstruction | relativeInstruction | instruction | labelDefinition
+  private def directive: Parser[ASTNode] = stringLiteral | indirectXInstruction | indirectYInstruction |  indirectInstruction | relativeInstruction | instruction | labelDefinition
 
   private def segment: Parser[Segment] = segmentName ~ "{" ~ rep[ASTNode](directive) ~ "}" ^^ {
     case seg  ~ _ ~ nodes ~ _  => new Segment(seg.toUpperCase(), nodes)
   }
 
-  private def asm: Parser[RootNode] = rep[ASTNode](directive | segment | macros) ^^ { nodes => RootNode(nodes) }
+  private def asm: Parser[RootNode] = rep[ASTNode](macros | directive | segment) ^^ { nodes => RootNode(nodes) }
 
   private def stripOneLineComments(code: String): String =
     code.lines.toStream

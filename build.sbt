@@ -1,6 +1,6 @@
 name := "srasm"
 version := "0.1"
-scalaVersion := "2.11.1"
+scalaVersion := "2.11.11"
 
 resolvers += "jgit-repository" at "http://download.eclipse.org/jgit/maven"
 

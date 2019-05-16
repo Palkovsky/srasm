@@ -145,17 +145,22 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
    * Implements directives logic.
    */
   private def handleDirective(name: String, arg: Argument): Int = (name, arg) match {
-    case ("ORG", ShortArg(offset)) => {
+    case (Lang.ORG_DIRECTIVE, ShortArg(offset)) => {
       basePtr = UShort(offset)
       0
     }
-    case ("DB", ShortArg(byte)) => {
+    case (Lang.DB_DIRECTIVE, ShortArg(byte)) => {
       bytes = bytes ++ Array(UByte(byte))
       1
     }
-    case ("DUP", ShortArg(count)) => {
+    case (Lang.DUP_DIRECTIVE, ShortArg(count)) => {
       bytes = bytes ++ Array.fill(count)(UByte(0x00))
       count
+    }
+    case (Lang.STR_DIRECTIVE, StringArg(value)) => {
+      val strBytes: Array[UByte] = value.getBytes.map((byte) => UByte(byte))
+      bytes = bytes ++ strBytes
+      strBytes.size
     }
     case dir => throw new CompilationError(s"Unknown directive: ${dir}.")
   }

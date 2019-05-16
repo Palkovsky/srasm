@@ -97,11 +97,19 @@ class Preprocessor private(sequence: List[ASTNode]) {
        }
 
        // Compiler Directives
-        case InstructionNode(dir, Number(value), null) :: tail if Lang.isDirective(dir) => {
-          val directive: Compilable =
-            CompilableDirective(dir, ShortArg(value.toInt))
+       case InstructionNode(dir, Number(value), null) :: tail if Lang.isDirective(dir) => {
+         val directive: Compilable =
+           CompilableDirective(dir, ShortArg(value.toInt))
+        (List(directive), tail)
+       }        
+
+       // Convert string literak into STR directive
+       case StringLiteral(value) :: tail => {
+         val directive: Compilable =
+           CompilableDirective(Lang.STR_DIRECTIVE, StringArg(value))
          (List(directive), tail)
-        }        
+       }
+
 
        // Implied instruction
        case InstructionNode(inst, null, null) :: tail => {

@@ -23,6 +23,7 @@ sealed abstract class Argument
 case class ByteArg(value: Int) extends Argument
 case class ShortArg(value: Int) extends Argument
 case class LabelArg(value: String) extends Argument
+case class StringArg(value: String) extends Argument
 
 sealed abstract class Compilable(){
   var segment: SegmentType = NONE
