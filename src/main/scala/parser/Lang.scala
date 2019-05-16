@@ -15,7 +15,9 @@ object Lang {
 
   val SEGMENTS: Array[String] = Array(
     "DATA",
-    "CODE"
+    "CODE",
+    "IRQ",
+    "NMI"
   )
 
   val DIRECTIVES: Array[String] = Array(

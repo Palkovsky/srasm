@@ -103,3 +103,4 @@ project/plugins/project/
 .ensime_cache/
 .ensime
 
+.DS_Store

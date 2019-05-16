@@ -2,6 +2,9 @@ name := "srasm"
 version := "0.1"
 scalaVersion := "2.11.11"
 
+ensimeIgnoreScalaMismatch in ThisBuild := true
+ensimeScalaVersion in ThisBuild := "2.12.8"
+
 resolvers += "jgit-repository" at "http://download.eclipse.org/jgit/maven"
 
 libraryDependencies += "org.typelevel" %% "spire" % "0.14.1"

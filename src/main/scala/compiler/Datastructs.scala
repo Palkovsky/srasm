@@ -7,9 +7,11 @@ object SegmentType extends Enumeration {
    * Definition order defines which segment comes first
    * in output binary.
    */
-  val NONE, CODE, DATA = Value
+  val NONE, CODE, NMI, IRQ, DATA = Value
 
   def fromString(segName: String) = segName.toUpperCase() match {
+    case "NMI" => NMI
+    case "IRQ" => IRQ
     case "DATA" => DATA
     case "CODE" => CODE
     case _ => NONE
