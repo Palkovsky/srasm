@@ -3,8 +3,9 @@ package parser
 import java.lang.{Long}
 import scala.util.matching.Regex
 import scala.util.parsing.combinator.RegexParsers
+import scala.util.parsing.input.Positional
 
-sealed abstract class ASTNode
+sealed abstract class ASTNode extends Positional
 case class RootNode(nodes: List[ASTNode]) extends ASTNode
 case class Segment(name: String, nodes: List[ASTNode]) extends ASTNode
 
@@ -20,7 +21,7 @@ case class Register(value: String) extends ASTNode
 case class Number(value: Long) extends ASTNode
 case class Immediate(value: ASTNode) extends ASTNode
 case class StringLiteral(value: String) extends ASTNode
-case class Unknown(value: String) extends ASTNode
+case class EOF() extends ASTNode
 
 // Macros
 case class MacroNumberDef(label: Label, number: Number) extends ASTNode
@@ -45,7 +46,7 @@ object ASMParser extends RegexParsers {
   private def segmentName: Parser[String] =
     alternative(Lang.SEGMENTS) | alternative(Lang.SEGMENTS.map(str => str.toLowerCase))
 
-  private def any: Parser[Unknown] = ".".r ^^ { str => Unknown(str) }
+  private def eof: Parser[EOF] = "\\Z".r ^^ { _ => EOF()}
   private def decimalNumber: Parser[Number] = "[0-9]+".r ^^ { str => Number(Long.parseLong(str, 10)) }
   private def hexadecimalNumber: Parser[Number] = hexPrefix ~ "[0-9a-fA-F]+".r ^^ {case _ ~ str => Number(Long.parseLong(str, 16)) }
 
@@ -93,7 +94,7 @@ object ASMParser extends RegexParsers {
     case seg  ~ _ ~ nodes ~ _  => new Segment(seg.toUpperCase(), nodes)
   }
 
-  private def asm: Parser[RootNode] = rep[ASTNode](macros | directive | segment) ^^ { nodes => RootNode(nodes) }
+  private def asm: Parser[RootNode] = rep[ASTNode](positioned(macros | directive | segment)) ^^ { nodes => RootNode(nodes) }
 
   private def stripOneLineComments(code: String): String =
     code.lines.toStream
@@ -128,6 +129,6 @@ object ASMParser extends RegexParsers {
   def runParser(code: String): ParseResult[RootNode] = {
     // Remove comments
     val stripped: String = stripMultiLineComments(stripOneLineComments(code))
-    parse(asm, stripped)
+    parseAll(asm, stripped)
   }
 }

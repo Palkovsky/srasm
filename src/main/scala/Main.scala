@@ -43,7 +43,22 @@ object Main extends App {
   case Some(config) => {
 
     val code: String = new String(Files.readAllBytes(config.in.toPath()))
-    val ast: RootNode = ASMParser.runParser(code).get
+    val ast: RootNode = ASMParser.runParser(code) match {
+      case ASMParser.Success(root: RootNode, _) => root
+      case failure: ASMParser.Failure => {
+        println("=========== FAILURE  ===========")
+        println(failure.toString())
+        System.exit(0)
+        null
+      }
+      case error: ASMParser.Error => {
+        println("=========== ERROR  ===========")
+        println(error.toString())
+        System.exit(0)
+        null
+      }
+    }
+
     if(config.verbose){
       println("=========== AST  ===========")
       println(ast.nodes)
