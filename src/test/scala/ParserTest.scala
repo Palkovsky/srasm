@@ -150,6 +150,22 @@ class ParserTests extends BaseSpec{
           Segment("NMI", List(InstructionNode("PHP")))
           ))
     }
+
+    it("Should detect custom segments"){
+      val code = """
+         SEG_1 {
+            TXA
+         }
+         MACRO {
+            PHP
+         }
+      """
+      parse(code) should equal(
+        List(
+          Segment("SEG_1", List(InstructionNode("TXA"))),
+          Segment("MACRO", List(InstructionNode("PHP")))
+          ))
+    }
   }
 
     describe("Parser - comments"){

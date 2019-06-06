@@ -208,6 +208,12 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
       bytes = bytes ++ strBytes
       strBytes.size
     }
+    case (Lang.OFF_DIRECTIVE, StringArg(label)) => {
+      refs.add(Reference(bytes.length, 2, label, AddressRef()))
+      bytes = bytes ++ Array.fill(2)(UByte(0x00))
+      2
+    }
+
     case dir => throw new CompilationError(s"Unknown directive: ${dir}.")
   }
 

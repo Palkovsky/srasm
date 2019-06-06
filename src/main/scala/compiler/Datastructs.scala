@@ -16,7 +16,6 @@ object SegmentType extends Enumeration {
     case "CODE" => CODE
     case _ => NONE
   }
-
 }
 import SegmentType._
 
@@ -30,7 +29,6 @@ case class StringArg(value: String) extends Argument
 sealed abstract class Compilable(){
   var segment: SegmentType = NONE
 }
-
 case class CompilableInst(inst: Instruction, arg: Argument = null) extends Compilable
 case class CompilableDirective(directive: String, arg: Argument = null) extends Compilable
 

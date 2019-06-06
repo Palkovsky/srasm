@@ -39,7 +39,6 @@ class Preprocessor private(sequence: List[ASTNode]) {
     /*
      *  Sort sequence, so that:
      *  Macro definitions
-     *  <NONE> segment instructions
      *  <CODE> segment
      *  <NMI> segment
      *  <IRQ> segment
@@ -55,22 +54,45 @@ class Preprocessor private(sequence: List[ASTNode]) {
     })
 
     /*
-     * Extract all macro definitions.
+     *  Extract all non-standard segments.
+     */
+    val macroSegments: Map[String, Segment] = sorted
+      .filter((node) => node.isInstanceOf[Segment])
+      .map((node) => node.asInstanceOf[Segment])
+      .filter((segment) => SegmentType.fromString(segment.name) == SegmentType.NONE)
+      .map((segment) => (segment.name, segment))
+      .toMap
+
+    /*
+     * Extract all defines.
      */
     val macros: Map[String, Int] = sorted
       .takeWhile((node) => node.isInstanceOf[MacroNumberDef])
       .map((node) => node.asInstanceOf[MacroNumberDef])
       .map((macroDef) => (macroDef.label.value, macroDef.number.value.toInt)).toMap
 
-
-    // Remove macro defs from begining
-    val stripped: List[ASTNode] = sorted.dropWhile((node) => node.isInstanceOf[MacroNumberDef])
+    // Remove macro defs and macro segments
+    var stripped: List[ASTNode] = sorted
+      .dropWhile((node) => node.isInstanceOf[MacroNumberDef])
+      .filter((node) =>
+        !node.isInstanceOf[Segment] ||
+        SegmentType.fromString(node.asInstanceOf[Segment].name) != SegmentType.NONE)
+    stripped = replaceMacroSegments(stripped, macroSegments)
 
     val state: State = State(NONE, mutable.Map(), macros)
     toCompilable(stripped, state)
     (state.result, state.labels)
   }
 
+  private def replaceMacroSegments(nodes: List[ASTNode], macroSegments: Map[String, Segment]): List[ASTNode] = nodes match {
+    case List() => List()
+    case InstructionNode(Lang.SEG_MACRO, Label(segName), null)::tail =>
+      macroSegments.get(segName).get.nodes ++ replaceMacroSegments(tail, macroSegments)
+    case Segment(segName, nodes)::tail if SegmentType.fromString(segName) != SegmentType.NONE =>
+      Segment(segName, replaceMacroSegments(nodes, macroSegments)) :: replaceMacroSegments(tail, macroSegments)
+    case node::tail=>
+      node :: replaceMacroSegments(tail, macroSegments)
+  }
 
   private def toCompilable(nodes: List[ASTNode], state: State): Unit = {
     var rest: List[ASTNode] = nodes
@@ -102,7 +124,13 @@ class Preprocessor private(sequence: List[ASTNode]) {
          val directive: Compilable =
            CompilableDirective(dir, ShortArg(value.toInt))
         (List(directive), tail)
-       }        
+       }
+
+       case InstructionNode(dir, Label(value), null) :: tail if Lang.isDirective(dir) => {
+         val directive: Compilable =
+           CompilableDirective(dir, StringArg(value))
+        (List(directive), tail)
+       }
 
        // Convert string literak into STR directive
        case StringLiteral(value) :: tail => {

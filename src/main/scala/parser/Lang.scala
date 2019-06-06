@@ -12,6 +12,9 @@ object Lang {
   val DB_DIRECTIVE: String = "DB"
   val DUP_DIRECTIVE: String = "DUP"
   val STR_DIRECTIVE: String = "STR"
+  val OFF_DIRECTIVE: String = "OFF"
+
+  val SEG_MACRO: String = "SEG"
 
   val SEGMENTS: Array[String] = Array(
     "DATA",
@@ -24,7 +27,10 @@ object Lang {
     ORG_DIRECTIVE,
     DB_DIRECTIVE,
     DUP_DIRECTIVE,
-    STR_DIRECTIVE
+    STR_DIRECTIVE,
+    OFF_DIRECTIVE,
+
+    SEG_MACRO
   )
 
   val REGISTERS: Array[String] = Array(

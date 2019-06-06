@@ -45,7 +45,6 @@ object ASMParser extends RegexParsers {
     alternative(Lang.DIRECTIVES) | alternative(Lang.DIRECTIVES.map(str => str.toLowerCase))
   private def segmentName: Parser[String] =
     alternative(Lang.SEGMENTS) | alternative(Lang.SEGMENTS.map(str => str.toLowerCase))
-
   private def eof: Parser[EOF] = "\\Z".r ^^ { _ => EOF()}
   private def decimalNumber: Parser[Number] = "[0-9]+".r ^^ { str => Number(Long.parseLong(str, 10)) }
   private def hexadecimalNumber: Parser[Number] = hexPrefix ~ "[0-9a-fA-F]+".r ^^ {case _ ~ str => Number(Long.parseLong(str, 16)) }
@@ -90,11 +89,11 @@ object ASMParser extends RegexParsers {
 
   private def directive: Parser[ASTNode] = stringLiteral | indirectXInstruction | indirectYInstruction |  indirectInstruction | relativeInstruction | instruction | labelDefinition
 
-  private def segment: Parser[Segment] = segmentName ~ "{" ~ rep[ASTNode](directive) ~ "}" ^^ {
+  private def segment: Parser[Segment] = (segmentName |  "[a-zA-Z0-9_]+".r) ~ "{" ~ rep[ASTNode](directive) ~ "}" ^^ {
     case seg  ~ _ ~ nodes ~ _  => new Segment(seg.toUpperCase(), nodes)
   }
 
-  private def asm: Parser[RootNode] = rep[ASTNode](positioned(macros | directive | segment)) ^^ { nodes => RootNode(nodes) }
+  private def asm: Parser[RootNode] = rep[ASTNode](positioned(macros | segment | directive)) ^^ { nodes => RootNode(nodes) }
 
   private def stripOneLineComments(code: String): String =
     code.lines.toStream
