@@ -124,14 +124,14 @@ object InstructionSet {
 
     // Shifts
     InstructionFamily("ASL")
-      .add(0x0A, ACC)
+      .add(0x0A, IMPL)
       .add(0x06, ZP)
       .add(0x16, ZP_X)
       .add(0x0E, ABS)
       .add(0x1E, ABS_X),
 
     InstructionFamily("LSR")
-      .add(0x4A, ACC)
+      .add(0x4A, IMPL)
       .add(0x46, ZP)
       .add(0x56, ZP_X)
       .add(0x4E, ABS)
@@ -139,13 +139,13 @@ object InstructionSet {
 
     // Rotations
     InstructionFamily("ROL")
-      .add(0x2A, ACC)
+      .add(0x2A, IMPL)
       .add(0x26, ZP)
       .add(0x36, ZP_X)
       .add(0x2E, ABS)
       .add(0x3E, ABS_X),
     InstructionFamily("ROR")
-      .add(0x6A, ACC)
+      .add(0x6A, IMPL)
       .add(0x66, ZP)
       .add(0x76, ZP_X)
       .add(0x6E, ABS)
