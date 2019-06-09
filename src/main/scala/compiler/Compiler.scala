@@ -224,7 +224,7 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
 
     /*
    * printBytecode()
-   * Pretty-prints output bytcode. 
+   * Pretty-prints output bytcode.
    * Should be called after compile()-ing first.
    */
   def printBytecode(): Unit = {
@@ -245,7 +245,10 @@ class Compiler private(instructions: List[Compilable], labels: mutable.Map[Strin
             println(s"0x${position.toHexString}:\t\t0x${byte.toInt.toHexString} (${name}, ${addressing})")
             shouldDecode = AddressingMode.getSize(addressing) + 1
           }
-          case _ => println(s"0x${position.toHexString}:\t\t0x${byte.toInt.toHexString}")
+          case _ => {
+            println(s"0x${position.toHexString}:\t\t0x${byte.toInt.toHexString}")
+            shouldDecode = 1
+          }
         }
       } else{
         println(s"0x${position.toHexString}:\t\t0x${byte.toInt.toHexString}")
